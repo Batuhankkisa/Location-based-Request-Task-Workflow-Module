@@ -13,8 +13,7 @@ interface PublicQr {
   };
 }
 
-interface CreateRequestResponse {
-  success: boolean;
+interface CreateRequestData {
   requestId: string;
   taskId: string;
 }
@@ -62,7 +61,7 @@ async function submitRequest() {
 
   submitting.value = true;
   try {
-    const response = await useApiFetch<CreateRequestResponse>('/public/requests', {
+    const response = await useApiFetch<ApiResponse<CreateRequestData>>('/public/requests', {
       method: 'POST',
       body: {
         token: token.value,
@@ -71,7 +70,7 @@ async function submitRequest() {
       }
     });
 
-    successMessage.value = `Talebin alındı. Task ID: ${response.taskId}`;
+    successMessage.value = `Talebin alındı. Task ID: ${response.data.taskId}`;
     requestText.value = '';
   } catch (err) {
     submitError.value = err instanceof Error ? err.message : 'Talep gönderilemedi.';

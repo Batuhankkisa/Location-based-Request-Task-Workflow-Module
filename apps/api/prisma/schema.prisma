@@ -80,9 +80,11 @@ model Task {
   assignedTo  String?
   completedBy String?
   approvedBy  String?
+  rejectedBy  String?
   createdAt   DateTime      @default(now())
   completedAt DateTime?
   approvedAt  DateTime?
+  rejectedAt  DateTime?
   history     TaskHistory[]
 
   @@index([locationId])

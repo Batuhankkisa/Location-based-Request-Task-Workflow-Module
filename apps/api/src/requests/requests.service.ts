@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { RequestChannel } from '@lbrtw/shared';
 import { RequestChannel as PrismaRequestChannel, TaskStatus as PrismaTaskStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -7,6 +7,8 @@ import { CreateVisitorRequestDto } from './dto/create-visitor-request.dto';
 
 @Injectable()
 export class RequestsService {
+  private readonly logger = new Logger(RequestsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService
@@ -72,16 +74,23 @@ export class RequestsService {
       return { visitorRequest, task };
     });
 
-    await this.notificationsService.notifyTaskCreated({
-      taskId: result.task.id,
-      locationName: qrCode.location.name,
-      requestText
-    });
+    try {
+      await this.notificationsService.notifyTaskCreated({
+        taskId: result.task.id,
+        locationName: qrCode.location.name,
+        requestText
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Task notification failed for ${result.task.id}: ${reason}`);
+    }
 
     return {
       success: true,
-      requestId: result.visitorRequest.id,
-      taskId: result.task.id
+      data: {
+        requestId: result.visitorRequest.id,
+        taskId: result.task.id
+      }
     };
   }
 }

@@ -1,0 +1,2 @@
+ALTER TABLE "Task" ADD COLUMN "rejectedBy" TEXT;
+ALTER TABLE "Task" ADD COLUMN "rejectedAt" TIMESTAMP(3);
