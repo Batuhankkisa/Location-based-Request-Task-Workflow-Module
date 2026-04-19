@@ -1,0 +1,12 @@
+node_modules/
+node_modules.broken.*/
+*.node_modules.broken.*/
+dist/
+.output/
+.nuxt/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+desktop.ini
