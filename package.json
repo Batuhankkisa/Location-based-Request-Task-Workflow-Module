@@ -1,0 +1,40 @@
+{
+  "name": "location-based-request-task-workflow-module",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "dotenv -e .env.example -e .env -- pnpm --parallel --filter @lbrtw/api --filter @lbrtw/web dev",
+    "dev:web": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/web dev",
+    "dev:api": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api dev",
+    "build": "pnpm -r build",
+    "build:api": "pnpm --filter @lbrtw/api build",
+    "build:web": "pnpm --filter @lbrtw/web build",
+    "start:api": "pnpm --filter @lbrtw/api start:prod",
+    "start:web": "pnpm --filter @lbrtw/web start",
+    "prisma:generate": "pnpm --filter @lbrtw/api prisma:generate",
+    "prisma:migrate": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:migrate",
+    "prisma:deploy": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:deploy",
+    "prisma:migrate:deploy": "pnpm --filter @lbrtw/api prisma:migrate:deploy",
+    "prisma:seed": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:seed"
+  },
+  "devDependencies": {
+    "dotenv-cli": "7.4.4",
+    "typescript": "5.7.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "@nuxt/kit": "3.15.1",
+      "@nuxt/schema": "3.15.1",
+      "@nuxt/vite-builder": "3.15.1",
+      "@nuxt/devtools": "1.7.0",
+      "nuxi": "3.17.2",
+      "nuxt": "3.15.1",
+      "@nuxt/telemetry": "2.6.2",
+      "magicast": "0.3.5",
+      "typescript": "5.7.3",
+      "vite": "6.0.11",
+      "vite-node": "2.1.8"
+    }
+  }
+}

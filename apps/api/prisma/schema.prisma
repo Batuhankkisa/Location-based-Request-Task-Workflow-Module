@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LocationType {
+  ORGANIZATION
+  FLOOR
+  ROOM
+  AREA
+}
+
+enum RequestChannel {
+  QR_WEB
+}
+
+enum TaskStatus {
+  NEW
+  IN_PROGRESS
+  DONE_WAITING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model Location {
+  id              String           @id @default(cuid())
+  name            String
+  code            String           @unique
+  type            LocationType
+  parentId        String?
+  parent          Location?        @relation("LocationTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children        Location[]       @relation("LocationTree")
+  qrCodes         QrCode[]
+  visitorRequests VisitorRequest[]
+  tasks           Task[]
+  createdAt       DateTime         @default(now())
+
+  @@index([parentId])
+}
+
+model QrCode {
+  id              String           @id @default(cuid())
+  token           String           @unique
+  label           String
+  isActive        Boolean          @default(true)
+  locationId      String
+  location        Location         @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  visitorRequests VisitorRequest[]
+  createdAt       DateTime         @default(now())
+
+  @@index([locationId])
+}
+
+model VisitorRequest {
+  id          String         @id @default(cuid())
+  qrCodeId    String
+  qrCode      QrCode         @relation(fields: [qrCodeId], references: [id], onDelete: Restrict)
+  locationId  String
+  location    Location       @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  requestText String
+  channel     RequestChannel @default(QR_WEB)
+  task        Task?
+  createdAt   DateTime       @default(now())
+
+  @@index([qrCodeId])
+  @@index([locationId])
+}
+
+model Task {
+  id          String        @id @default(cuid())
+  requestId   String        @unique
+  request     VisitorRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+  locationId  String
+  location    Location      @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  status      TaskStatus    @default(NEW)
+  assignedTo  String?
+  completedBy String?
+  approvedBy  String?
+  createdAt   DateTime      @default(now())
+  completedAt DateTime?
+  approvedAt  DateTime?
+  history     TaskHistory[]
+
+  @@index([locationId])
+  @@index([status])
+}
+
+model TaskHistory {
+  id         String      @id @default(cuid())
+  taskId     String
+  task       Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fromStatus TaskStatus?
+  toStatus   TaskStatus
+  note       String?
+  changedBy  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([taskId])
+}
