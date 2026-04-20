@@ -9,11 +9,41 @@ config({ path: resolve(process.cwd(), '../../.env.example'), override: false });
 config({ path: resolve(process.cwd(), '.env'), override: true });
 config({ path: resolve(process.cwd(), '../../.env'), override: true });
 
+function parsePort() {
+  const rawPort = process.env.PORT || process.env.API_PORT || '3001';
+  const port = Number(rawPort);
+
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new Error(`Invalid API port: ${rawPort}`);
+  }
+
+  return port;
+}
+
+function parseCorsOrigin() {
+  const rawOrigins = process.env.CORS_ORIGIN || process.env.CORS_ORIGINS;
+
+  if (!rawOrigins) {
+    return true;
+  }
+
+  const origins = rawOrigins
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (origins.length === 0 || origins.includes('*')) {
+    return true;
+  }
+
+  return origins;
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: true,
+    origin: parseCorsOrigin(),
     credentials: true
   });
 
@@ -25,12 +55,11 @@ async function bootstrap() {
     })
   );
 
-  const port = Number(process.env.API_PORT ?? 3001);
-  const host = process.env.API_HOST ?? '0.0.0.0';
-  await app.listen(port, host);
+  const port = parsePort();
+  const host = '0.0.0.0';
 
-  const displayHost = host === '0.0.0.0' ? 'localhost' : host;
-  console.log(`API listening on http://${displayHost}:${port}`);
+  await app.listen(port, host);
+  console.log(`API listening on http://${host}:${port}`);
 }
 
 bootstrap();

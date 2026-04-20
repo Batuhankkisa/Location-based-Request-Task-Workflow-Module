@@ -91,11 +91,7 @@ export class TasksService {
 
     return this.transitionTask(id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.REJECTED, {
       changedBy: actor,
-      note: this.approvalsService.buildDecisionNote('reject', dto.note),
-      data: {
-        rejectedBy: actor,
-        rejectedAt: new Date()
-      }
+      note: this.approvalsService.buildDecisionNote('reject', dto.note)
     });
   }
 

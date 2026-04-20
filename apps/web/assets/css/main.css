@@ -335,6 +335,26 @@ th {
   justify-content: flex-end;
 }
 
+.qr-action-row {
+  margin-top: 18px;
+}
+
+.qr-preview-frame {
+  align-items: center;
+  border: 1px dashed #b7c0c0;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+  padding: 16px;
+}
+
+.qr-preview-frame img {
+  height: auto;
+  max-width: 220px;
+  width: 100%;
+}
+
 @media (max-width: 720px) {
   .topbar,
   .page-heading,

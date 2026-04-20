@@ -5,6 +5,8 @@ interface PublicQr {
   id: string;
   token: string;
   label: string;
+  imagePath?: string | null;
+  scanLogId?: string;
   location: {
     id: string;
     name: string;
@@ -13,42 +15,24 @@ interface PublicQr {
   };
 }
 
-interface CreateRequestData {
+interface CreateRequestResponse {
+  success: boolean;
   requestId: string;
   taskId: string;
 }
 
 const route = useRoute();
 const token = computed(() => String(route.params.token ?? ''));
-const apiBaseUrl = useApiBaseUrl();
-const qrData = ref<ApiResponse<PublicQr> | null>(null);
 const requestText = ref('');
-const loadError = ref('');
 const submitError = ref('');
 const successMessage = ref('');
 const micHint = ref('');
 const submitting = ref(false);
-const pending = ref(true);
 
-async function loadQr() {
-  pending.value = true;
-  loadError.value = '';
-  qrData.value = null;
-
-  try {
-    qrData.value = await $fetch<ApiResponse<PublicQr>>(
-      `/public/qr/${encodeURIComponent(token.value)}`,
-      { baseURL: apiBaseUrl }
-    );
-  } catch (err) {
-    loadError.value = err instanceof Error ? err.message : 'QR bilgisi alinamadi.';
-  } finally {
-    pending.value = false;
-  }
-}
-
-onMounted(loadQr);
-watch(token, loadQr);
+const { data, pending, error, refresh } = await useAsyncData(
+  `public-qr-${token.value}`,
+  () => useApiFetch<ApiResponse<PublicQr>>(`/public/qr/${encodeURIComponent(token.value)}`)
+);
 
 async function submitRequest() {
   submitError.value = '';
@@ -61,16 +45,17 @@ async function submitRequest() {
 
   submitting.value = true;
   try {
-    const response = await useApiFetch<ApiResponse<CreateRequestData>>('/public/requests', {
+    const response = await useApiFetch<CreateRequestResponse>('/public/requests', {
       method: 'POST',
       body: {
         token: token.value,
         requestText: requestText.value,
-        channel: RequestChannel.QR_WEB
+        channel: RequestChannel.QR_WEB,
+        scanLogId: data.value?.data.scanLogId
       }
     });
 
-    successMessage.value = `Talebin alındı. Task ID: ${response.data.taskId}`;
+    successMessage.value = `Talebin alındı. Task ID: ${response.taskId}`;
     requestText.value = '';
   } catch (err) {
     submitError.value = err instanceof Error ? err.message : 'Talep gönderilemedi.';
@@ -86,22 +71,21 @@ function showMicHint() {
 
 <template>
   <section class="section narrow">
-    <button v-if="loadError" class="button" type="button" @click="loadQr">Tekrar dene</button>
+    <button v-if="error" class="button" type="button" @click="refresh">Tekrar dene</button>
 
     <div v-if="pending" class="panel">
       <p>QR bilgisi yükleniyor...</p>
     </div>
 
-    <div v-else-if="loadError" class="panel error-panel">
+    <div v-else-if="error" class="panel error-panel">
       <h1>QR bulunamadı</h1>
       <p>Token geçersiz ya da pasif olabilir.</p>
-      <p class="muted">{{ loadError }}</p>
     </div>
 
-    <form v-else-if="qrData?.data" class="panel request-form" @submit.prevent="submitRequest">
+    <form v-else-if="data?.data" class="panel request-form" @submit.prevent="submitRequest">
       <p class="eyebrow">Public talep</p>
-      <h1>{{ qrData.data.location.name }}</h1>
-      <p class="muted">{{ qrData.data.label }} · {{ qrData.data.location.code }}</p>
+      <h1>{{ data.data.location.name }}</h1>
+      <p class="muted">{{ data.data.label }} · {{ data.data.location.code }}</p>
 
       <label for="requestText">Talebin</label>
       <textarea
@@ -123,10 +107,5 @@ function showMicHint() {
       <p v-if="submitError" class="error-text">{{ submitError }}</p>
       <p v-if="successMessage" class="success-text">{{ successMessage }}</p>
     </form>
-
-    <div v-else class="panel error-panel">
-      <h1>QR bilgisi alinamadi</h1>
-      <p>API cevabi beklenen formatta degil. Lutfen API'nin calistigini ve seed verinin yuklendigini kontrol et.</p>
-    </div>
   </section>
 </template>

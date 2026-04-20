@@ -7,5 +7,3 @@ export interface TaskCreatedNotificationPayload {
 export interface NotificationProvider {
   notifyTaskCreated(payload: TaskCreatedNotificationPayload): Promise<void>;
 }
-
-export const NOTIFICATION_PROVIDER = Symbol('NOTIFICATION_PROVIDER');

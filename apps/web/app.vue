@@ -5,6 +5,7 @@
       <nav class="nav-links" aria-label="Ana gezinme">
         <NuxtLink to="/q/room-401-demo-token">401 QR</NuxtLink>
         <NuxtLink to="/admin/tasks">Tasklar</NuxtLink>
+        <NuxtLink to="/admin/qrs">QRlar</NuxtLink>
         <NuxtLink to="/admin/locations">Lokasyonlar</NuxtLink>
       </nav>
     </header>

@@ -3,14 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @lbrtw/shared build && dotenv -e ../../.env.example -e ../../.env -o -- node --watch -r ts-node/register src/main.ts",
-    "build": "pnpm --filter @lbrtw/shared build && tsc -p tsconfig.build.json",
-    "start": "dotenv -e ../../.env.example -e ../../.env -o -- node dist/main.js",
+    "dev": "pnpm --filter @lbrtw/shared build && dotenv -e ../../.env.example -e ../../.env -- tsx watch src/main.ts",
+    "build": "pnpm --filter @lbrtw/shared build && prisma generate && tsc -p tsconfig.build.json",
+    "start": "dotenv -e ../../.env.example -e ../../.env -- node dist/main.js",
     "start:prod": "node dist/main.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "dotenv -e ../../.env.example -e ../../.env -o -- prisma migrate dev",
-    "prisma:deploy": "dotenv -e ../../.env.example -e ../../.env -o -- prisma migrate deploy",
-    "prisma:seed": "dotenv -e ../../.env.example -e ../../.env -o -- prisma db seed"
+    "prisma:migrate": "dotenv -e ../../.env.example -e ../../.env -- prisma migrate dev",
+    "prisma:deploy": "dotenv -e ../../.env.example -e ../../.env -- prisma migrate deploy",
+    "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:seed": "dotenv -e ../../.env.example -e ../../.env -- prisma db seed"
   },
   "dependencies": {
     "@lbrtw/shared": "workspace:*",
@@ -30,8 +31,6 @@
     "@types/node": "^22.10.5",
     "dotenv-cli": "^7.4.4",
     "prisma": "^6.2.1",
-    "ts-node": "10.9.2",
-    "ts-node": "10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

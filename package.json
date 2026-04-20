@@ -4,14 +4,19 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "dotenv -e .env.example -e .env -o -- pnpm --parallel --filter @lbrtw/api --filter @lbrtw/web dev",
-    "dev:web": "dotenv -e .env.example -e .env -o -- pnpm --filter @lbrtw/web dev",
-    "dev:api": "dotenv -e .env.example -e .env -o -- pnpm --filter @lbrtw/api dev",
+    "dev": "dotenv -e .env.example -e .env -- pnpm --parallel --filter @lbrtw/api --filter @lbrtw/web dev",
+    "dev:web": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/web dev",
+    "dev:api": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api dev",
     "build": "pnpm -r build",
+    "build:api": "pnpm --filter @lbrtw/api build",
+    "build:web": "pnpm --filter @lbrtw/web build",
+    "start:api": "pnpm --filter @lbrtw/api start:prod",
+    "start:web": "pnpm --filter @lbrtw/web start",
     "prisma:generate": "pnpm --filter @lbrtw/api prisma:generate",
-    "prisma:migrate": "dotenv -e .env.example -e .env -o -- pnpm --filter @lbrtw/api prisma:migrate",
-    "prisma:deploy": "dotenv -e .env.example -e .env -o -- pnpm --filter @lbrtw/api prisma:deploy",
-    "prisma:seed": "dotenv -e .env.example -e .env -o -- pnpm --filter @lbrtw/api prisma:seed"
+    "prisma:migrate": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:migrate",
+    "prisma:deploy": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:deploy",
+    "prisma:migrate:deploy": "pnpm --filter @lbrtw/api prisma:migrate:deploy",
+    "prisma:seed": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:seed"
   },
   "devDependencies": {
     "dotenv-cli": "7.4.4",

@@ -14,4 +14,8 @@ export class CreateVisitorRequestDto {
   @IsOptional()
   @IsEnum(RequestChannel)
   channel?: RequestChannel;
+
+  @IsOptional()
+  @IsString()
+  scanLogId?: string;
 }

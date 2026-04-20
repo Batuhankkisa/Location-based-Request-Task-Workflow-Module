@@ -1,0 +1,39 @@
+# Render Blueprint for staging/demo.
+# Keep services at the repository root so pnpm can resolve packages/shared.
+services:
+  - type: web
+    name: lbrtw-api-staging
+    runtime: node
+    region: frankfurt
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:api
+    # preDeployCommand requires a paid Render web service. If you choose Free, run migrations manually.
+    preDeployCommand: pnpm prisma:migrate:deploy
+    startCommand: pnpm start:api
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lbrtw-postgres-staging
+          property: connectionString
+      - key: CORS_ORIGIN
+        value: https://lbrtw-web-staging.onrender.com
+      - key: NODE_ENV
+        value: production
+
+  - type: web
+    name: lbrtw-web-staging
+    runtime: node
+    region: frankfurt
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build:web
+    startCommand: pnpm start:web
+    envVars:
+      - key: NUXT_PUBLIC_API_BASE_URL
+        value: https://lbrtw-api-staging.onrender.com
+      - key: NODE_ENV
+        value: production
+
+databases:
+  - name: lbrtw-postgres-staging
+    databaseName: lbrtw_staging
+    user: lbrtw_staging
+    plan: free

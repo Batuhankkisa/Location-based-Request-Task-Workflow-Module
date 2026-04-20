@@ -7,11 +7,9 @@ interface TaskDetail {
   assignedTo: string | null;
   completedBy: string | null;
   approvedBy: string | null;
-  rejectedBy: string | null;
   createdAt: string;
   completedAt: string | null;
   approvedAt: string | null;
-  rejectedAt: string | null;
   location: {
     name: string;
     code: string;
@@ -45,47 +43,12 @@ const actionError = ref('');
 const actionMessage = ref('');
 const actionLoading = ref('');
 
-const { data, pending, error, refresh } = await useAsyncData<ApiResponse<TaskDetail>>(
+const { data, pending, error, refresh } = await useAsyncData(
   `task-${id.value}`,
   () => useApiFetch<ApiResponse<TaskDetail>>(`/tasks/${encodeURIComponent(id.value)}`)
 );
 
-const task = computed(() => data.value?.data ?? null);
-const history = computed(() => task.value?.history ?? []);
-const errorMessage = computed(() => getApiErrorMessage(error.value, 'Task bulunamadı veya alınamadı.'));
-
-function getApiErrorMessage(err: unknown, fallback: string) {
-  if (!err || typeof err !== 'object') {
-    return fallback;
-  }
-
-  const errorWithData = err as {
-    data?: {
-      message?: string | string[];
-      error?: string;
-    };
-    message?: string;
-  };
-  const message = errorWithData.data?.message;
-
-  if (Array.isArray(message)) {
-    return message.join(' ');
-  }
-
-  if (typeof message === 'string' && message.trim()) {
-    return message;
-  }
-
-  if (typeof errorWithData.data?.error === 'string' && errorWithData.data.error.trim()) {
-    return errorWithData.data.error;
-  }
-
-  if (typeof errorWithData.message === 'string' && errorWithData.message.trim()) {
-    return errorWithData.message;
-  }
-
-  return fallback;
-}
+const task = computed(() => data.value?.data);
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -117,7 +80,7 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
     note.value = '';
     await refresh();
   } catch (err) {
-    actionError.value = getApiErrorMessage(err, 'Task güncellenemedi.');
+    actionError.value = err instanceof Error ? err.message : 'Task güncellenemedi.';
   } finally {
     actionLoading.value = '';
   }
@@ -139,9 +102,7 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
     </div>
 
     <div v-else-if="error" class="panel error-panel">
-      <h1>Task bulunamadı</h1>
-      <p>{{ errorMessage }}</p>
-      <button class="button" type="button" @click="refresh()">Tekrar dene</button>
+      <p>Task bulunamadı.</p>
     </div>
 
     <div v-else-if="task" class="detail-grid">
@@ -166,20 +127,12 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
             <dd>{{ task.approvedBy ?? '-' }}</dd>
           </div>
           <div>
-            <dt>Reddeden</dt>
-            <dd>{{ task.rejectedBy ?? '-' }}</dd>
-          </div>
-          <div>
             <dt>Tamamlandı</dt>
             <dd>{{ formatDate(task.completedAt) }}</dd>
           </div>
           <div>
             <dt>Onaylandı</dt>
             <dd>{{ formatDate(task.approvedAt) }}</dd>
-          </div>
-          <div>
-            <dt>Reddedildi</dt>
-            <dd>{{ formatDate(task.rejectedAt) }}</dd>
           </div>
         </dl>
       </section>
@@ -242,8 +195,7 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
 
       <section class="panel full-span">
         <p class="eyebrow">Status history</p>
-        <p v-if="history.length === 0" class="muted">Henüz history kaydı yok.</p>
-        <table v-else>
+        <table>
           <thead>
             <tr>
               <th>Tarih</th>
@@ -254,7 +206,7 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in history" :key="item.id">
+            <tr v-for="item in task.history" :key="item.id">
               <td>{{ formatDate(item.createdAt) }}</td>
               <td>{{ item.fromStatus ?? '-' }}</td>
               <td>{{ item.toStatus }}</td>
@@ -264,12 +216,6 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
           </tbody>
         </table>
       </section>
-    </div>
-
-    <div v-else class="panel error-panel">
-      <h1>Task detayı alınamadı</h1>
-      <p>API cevabı beklenen formatta değil.</p>
-      <button class="button" type="button" @click="refresh()">Tekrar dene</button>
     </div>
   </section>
 </template>

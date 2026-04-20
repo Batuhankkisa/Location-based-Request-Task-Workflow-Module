@@ -16,3 +16,11 @@ export enum LocationType {
 export enum RequestChannel {
   QR_WEB = 'QR_WEB'
 }
+
+export enum QrScanStatus {
+  RESOLVED = 'RESOLVED',
+  INACTIVE = 'INACTIVE',
+  TOKEN_NOT_FOUND = 'TOKEN_NOT_FOUND',
+  REQUEST_CREATED = 'REQUEST_CREATED',
+  REQUEST_FAILED = 'REQUEST_FAILED'
+}

@@ -26,6 +26,14 @@ enum TaskStatus {
   REJECTED
 }
 
+enum QrScanStatus {
+  RESOLVED
+  INACTIVE
+  TOKEN_NOT_FOUND
+  REQUEST_CREATED
+  REQUEST_FAILED
+}
+
 model Location {
   id              String           @id @default(cuid())
   name            String
@@ -37,6 +45,7 @@ model Location {
   qrCodes         QrCode[]
   visitorRequests VisitorRequest[]
   tasks           Task[]
+  qrScanLogs      QrScanLog[]      @relation("QrScanLogLocation")
   createdAt       DateTime         @default(now())
 
   @@index([parentId])
@@ -47,12 +56,20 @@ model QrCode {
   token           String           @unique
   label           String
   isActive        Boolean          @default(true)
+  deactivatedAt   DateTime?
+  lastScannedAt   DateTime?
+  scanCount       Int              @default(0)
+  imagePath       String?
+  note            String?
   locationId      String
   location        Location         @relation(fields: [locationId], references: [id], onDelete: Restrict)
   visitorRequests VisitorRequest[]
+  scanLogs        QrScanLog[]
   createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   @@index([locationId])
+  @@index([isActive])
 }
 
 model VisitorRequest {
@@ -64,6 +81,7 @@ model VisitorRequest {
   requestText String
   channel     RequestChannel @default(QR_WEB)
   task        Task?
+  scanLogs    QrScanLog[]
   createdAt   DateTime       @default(now())
 
   @@index([qrCodeId])
@@ -80,12 +98,11 @@ model Task {
   assignedTo  String?
   completedBy String?
   approvedBy  String?
-  rejectedBy  String?
   createdAt   DateTime      @default(now())
   completedAt DateTime?
   approvedAt  DateTime?
-  rejectedAt  DateTime?
   history     TaskHistory[]
+  scanLogs    QrScanLog[]
 
   @@index([locationId])
   @@index([status])
@@ -102,4 +119,28 @@ model TaskHistory {
   createdAt  DateTime    @default(now())
 
   @@index([taskId])
+}
+
+model QrScanLog {
+  id                 String          @id @default(cuid())
+  qrCodeId           String?
+  qrCode             QrCode?         @relation(fields: [qrCodeId], references: [id], onDelete: SetNull)
+  tokenSnapshot      String
+  scannedAt          DateTime        @default(now())
+  ip                 String?
+  userAgent          String?
+  resolvedLocationId String?
+  resolvedLocation   Location?       @relation("QrScanLogLocation", fields: [resolvedLocationId], references: [id], onDelete: SetNull)
+  status             QrScanStatus
+  requestId          String?
+  request            VisitorRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  createdTaskId      String?
+  createdTask        Task?           @relation(fields: [createdTaskId], references: [id], onDelete: SetNull)
+  errorMessage       String?
+
+  @@index([qrCodeId])
+  @@index([scannedAt])
+  @@index([status])
+  @@index([requestId])
+  @@index([resolvedLocationId])
 }
