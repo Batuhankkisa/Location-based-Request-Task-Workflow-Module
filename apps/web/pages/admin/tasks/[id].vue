@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { TaskStatus } from '@lbrtw/shared';
 
+interface TaskMedia {
+  id: string;
+  type: 'IMAGE' | 'AUDIO';
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  originalName: string | null;
+  createdAt: string;
+}
+
 interface TaskDetail {
   id: string;
   status: TaskStatus;
@@ -18,12 +28,15 @@ interface TaskDetail {
   request: {
     id: string;
     requestText: string;
+    transcriptText: string | null;
+    audioFileUrl: string | null;
     channel: string;
     createdAt: string;
     qrCode: {
       token: string;
       label: string;
     };
+    media: TaskMedia[];
   };
   history: Array<{
     id: string;
@@ -42,6 +55,7 @@ const note = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const actionLoading = ref('');
+const apiBaseUrl = useApiBaseUrl();
 
 const { data, pending, error, refresh } = await useAsyncData(
   `task-${id.value}`,
@@ -49,6 +63,10 @@ const { data, pending, error, refresh } = await useAsyncData(
 );
 
 const task = computed(() => data.value?.data);
+const requestMedia = computed(() => task.value?.request.media ?? []);
+const imageMedia = computed(() => requestMedia.value.filter((item) => item.type === 'IMAGE'));
+const audioMedia = computed(() => requestMedia.value.filter((item) => item.type === 'AUDIO'));
+const primaryAudioUrl = computed(() => task.value?.request.audioFileUrl ?? audioMedia.value[0]?.fileUrl ?? '');
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -84,6 +102,24 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
   } finally {
     actionLoading.value = '';
   }
+}
+
+function mediaUrl(fileUrl: string) {
+  if (/^https?:\/\//i.test(fileUrl)) {
+    return fileUrl;
+  }
+
+  const baseUrl = apiBaseUrl.replace(/\/$/, '');
+  const path = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+  return `${baseUrl}${path}`;
+}
+
+function formatBytes(value: number) {
+  if (value < 1024 * 1024) {
+    return `${Math.round(value / 1024)} KB`;
+  }
+
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
 }
 </script>
 
@@ -141,6 +177,36 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
         <p class="eyebrow">Talep</p>
         <h2>{{ task.location.name }}</h2>
         <p>{{ task.request.requestText }}</p>
+
+        <div v-if="task.request.transcriptText" class="request-media-block">
+          <h3>Transcript</h3>
+          <p>{{ task.request.transcriptText }}</p>
+        </div>
+
+        <div v-if="primaryAudioUrl" class="request-media-block">
+          <h3>Ses kaydı</h3>
+          <audio class="audio-player" :src="mediaUrl(primaryAudioUrl)" controls />
+        </div>
+
+        <div v-if="imageMedia.length" class="request-media-block">
+          <h3>Fotoğraflar</h3>
+          <div class="admin-media-grid">
+            <a
+              v-for="image in imageMedia"
+              :key="image.id"
+              :href="mediaUrl(image.fileUrl)"
+              target="_blank"
+              rel="noreferrer"
+              class="admin-media-image"
+            >
+              <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotoğrafı'" />
+            </a>
+          </div>
+        </div>
+
+        <p v-if="!task.request.transcriptText && !requestMedia.length" class="muted">
+          Bu talepte medya veya transcript yok.
+        </p>
         <p class="muted">
           {{ task.location.code }} · {{ task.location.type }} · {{ task.request.qrCode.token }}
         </p>
@@ -191,6 +257,37 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
 
         <p v-if="actionError" class="error-text">{{ actionError }}</p>
         <p v-if="actionMessage" class="success-text">{{ actionMessage }}</p>
+      </section>
+
+      <section class="panel full-span">
+        <p class="eyebrow">Medya metadata</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Tip</th>
+              <th>Dosya</th>
+              <th>MIME</th>
+              <th>Boyut</th>
+              <th>Yüklendi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in requestMedia" :key="item.id">
+              <td>{{ item.type }}</td>
+              <td>
+                <a :href="mediaUrl(item.fileUrl)" target="_blank" rel="noreferrer">
+                  {{ item.originalName ?? item.fileUrl }}
+                </a>
+              </td>
+              <td>{{ item.mimeType }}</td>
+              <td>{{ formatBytes(item.fileSize) }}</td>
+              <td>{{ formatDate(item.createdAt) }}</td>
+            </tr>
+            <tr v-if="requestMedia.length === 0">
+              <td colspan="5">Medya dosyası yok.</td>
+            </tr>
+          </tbody>
+        </table>
       </section>
 
       <section class="panel full-span">

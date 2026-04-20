@@ -1,15 +1,19 @@
 import { RequestChannel } from '@lbrtw/shared';
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateVisitorRequestDto {
   @IsString()
-  @IsNotEmpty()
   token!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(2000)
-  requestText!: string;
+  requestText?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  transcriptText?: string;
 
   @IsOptional()
   @IsEnum(RequestChannel)

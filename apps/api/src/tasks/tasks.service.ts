@@ -13,7 +13,10 @@ const taskListInclude = {
 const taskDetailInclude = {
   request: {
     include: {
-      qrCode: true
+      qrCode: true,
+      media: {
+        orderBy: { createdAt: 'asc' as const }
+      }
     }
   },
   location: true,

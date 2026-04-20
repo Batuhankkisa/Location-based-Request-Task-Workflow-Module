@@ -253,6 +253,38 @@ Admin QR ekranları:
 
 Normal public akışta `/q/[token]` açıldığında scan log oluşur, `scanCount` artar ve `lastScannedAt` güncellenir. Talep gönderilirse aynı scan log `REQUEST_CREATED` durumuna güncellenip request/task ile ilişkilendirilir.
 
+## Voice-to-Text ve Request Media
+
+Public QR ekranı `/q/[token]` üzerinden metin, transcript, ses kaydı ve fotoğraf gönderebilir. Tarayıcı destekliyorsa Web Speech API ile `transcriptText` üretilir; destek yoksa kullanıcı yine `MediaRecorder` ile ses kaydı alabilir veya transcript alanını elle doldurabilir.
+
+`POST /public/requests` JSON akışını korur ve ayrıca `multipart/form-data` kabul eder:
+
+- `token`: QR token
+- `requestText`: kullanıcı talep metni, opsiyonel
+- `transcriptText`: speech-to-text çıktısı veya elle girilen transcript, opsiyonel
+- `scanLogId`: QR resolve sırasında dönen log id, opsiyonel
+- `images`: çoklu fotoğraf dosyası
+- `audio`: tek ses kaydı dosyası
+
+Validasyon:
+
+- Talep göndermek için `requestText`, `transcriptText`, ses kaydı veya fotoğraftan en az biri olmalıdır.
+- Fotoğraf: `jpeg`, `png`, `webp`; dosya başına maksimum 5 MB; en fazla 5 adet.
+- Ses: `webm`, `wav`, `mp3`, `ogg`, `m4a`, `aac`; maksimum 10 MB; en fazla 1 adet.
+- Sadece fotoğraf veya sadece ses gönderilirse backend `requestText` için anlamlı bir fallback metin üretir.
+
+Upload storage:
+
+- Kullanıcı dosyaları DB’ye binary olarak yazılmaz.
+- Varsayılan klasör: `apps/api/storage/uploads/request-media`.
+- API bu klasörü `/uploads/request-media/...` path’iyle servis eder.
+- DB’de `VisitorRequest.transcriptText`, `VisitorRequest.audioFileUrl` ve `RequestMedia.fileUrl` / metadata alanları tutulur.
+- Farklı ortamda klasör değiştirmek için API env’ine `UPLOAD_DIR` verilebilir.
+
+Render notu: Bu MVP local disk kullanır. Render free/ephemeral disk yeniden deploy veya restart sonrası dosyaları kalıcı tutmayabilir. Staging demo için yeterlidir; production için Render persistent disk veya S3/R2 benzeri object storage’a geçilmelidir.
+
+Admin tarafında `/admin/tasks/[id]` ekranı transcript, audio player, fotoğraf galeri önizlemesi ve medya metadata tablosunu gösterir. Medya yoksa ekranda boş durum mesajı görünür.
+
 ## API Endpointleri
 
 Public:
@@ -293,8 +325,8 @@ Admin:
 ## Notlar
 
 - Pasif veya geçersiz QR token için API `404` döner.
-- Boş talep metni `400` ile reddedilir.
+- Boş talep; metin, transcript, ses veya fotoğraf yoksa `400` ile reddedilir.
 - Hatalı task state geçişleri `400` ile reddedilir.
 - Bulunamayan task için `404` döner.
-- Public sayfadaki mikrofon butonu gerçek speech-to-text entegrasyonu değildir; sonraki sürüm için placeholder olarak durur.
+- Browser speech recognition desteklemiyorsa QR ekranı transcript üretmez ama ses kaydı almayı dener.
 - Admin/staff ekranları korumasızdır; staging/demo dışında kullanılmamalıdır.

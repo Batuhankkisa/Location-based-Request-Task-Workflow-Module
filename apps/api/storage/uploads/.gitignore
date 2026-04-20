@@ -1,0 +1,4 @@
+*
+!.gitignore
+!request-media/
+!request-media/.gitkeep

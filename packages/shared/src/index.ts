@@ -24,3 +24,8 @@ export enum QrScanStatus {
   REQUEST_CREATED = 'REQUEST_CREATED',
   REQUEST_FAILED = 'REQUEST_FAILED'
 }
+
+export enum RequestMediaType {
+  IMAGE = 'IMAGE',
+  AUDIO = 'AUDIO'
+}

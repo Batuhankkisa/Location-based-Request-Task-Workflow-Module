@@ -3,12 +3,18 @@ import { RequestChannel } from '@lbrtw/shared';
 import {
   Prisma,
   QrScanStatus,
+  RequestMediaType,
   RequestChannel as PrismaRequestChannel,
   TaskStatus as PrismaTaskStatus
 } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVisitorRequestDto } from './dto/create-visitor-request.dto';
+import {
+  RequestMediaStorageService,
+  StoredRequestMedia,
+  UploadedRequestFiles
+} from './request-media-storage.service';
 
 type RequestContext = {
   ip?: string;
@@ -25,7 +31,8 @@ type QrWithLocation = Prisma.QrCodeGetPayload<typeof qrWithLocation>;
 export class RequestsService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly notificationsService: NotificationsService
+    private readonly notificationsService: NotificationsService,
+    private readonly requestMediaStorageService: RequestMediaStorageService
   ) {}
 
   async resolveQrToken(token: string, context: RequestContext = {}) {
@@ -53,16 +60,22 @@ export class RequestsService {
     };
   }
 
-  async createFromPublicQr(dto: CreateVisitorRequestDto, context: RequestContext = {}) {
+  async createFromPublicQr(
+    dto: CreateVisitorRequestDto,
+    context: RequestContext = {},
+    files?: UploadedRequestFiles
+  ) {
     const token = dto.token.trim();
-    const requestText = dto.requestText.trim();
+    const requestText = this.clean(dto.requestText);
+    const transcriptText = this.clean(dto.transcriptText);
+    const hasUploadedFiles = this.requestMediaStorageService.hasFiles(files);
 
     if (!token) {
       throw new BadRequestException('QR token is required');
     }
 
-    if (!requestText) {
-      throw new BadRequestException('Request text cannot be empty');
+    if (!requestText && !transcriptText && !hasUploadedFiles) {
+      throw new BadRequestException('Talep metni, transcript, ses kaydı veya fotoğraf zorunludur');
     }
 
     const qrCode = await this.prisma.qrCode.findUnique({
@@ -82,14 +95,29 @@ export class RequestsService {
 
     const channel = (dto.channel ?? RequestChannel.QR_WEB) as PrismaRequestChannel;
     const scanLogId = this.clean(dto.scanLogId) ?? (await this.logQrScan(qrCode, QrScanStatus.RESOLVED, context)).id;
+    const storedMedia = await this.requestMediaStorageService.store(files);
+    const finalRequestText = requestText ?? transcriptText ?? this.buildMediaOnlyRequestText(storedMedia);
+    const audioMedia = storedMedia.find((media) => media.type === RequestMediaType.AUDIO);
 
     const result = await this.prisma.$transaction(async (tx) => {
       const visitorRequest = await tx.visitorRequest.create({
         data: {
           qrCodeId: qrCode.id,
           locationId: qrCode.locationId,
-          requestText,
-          channel
+          requestText: finalRequestText,
+          transcriptText,
+          audioFileUrl: audioMedia?.fileUrl,
+          channel,
+          media: {
+            create: storedMedia.map((media) => ({
+              type: media.type,
+              fileUrl: media.fileUrl,
+              storageKey: media.storageKey,
+              mimeType: media.mimeType,
+              fileSize: media.fileSize,
+              originalName: media.originalName
+            }))
+          }
         }
       });
 
@@ -152,7 +180,7 @@ export class RequestsService {
     await this.notificationsService.notifyTaskCreated({
       taskId: result.task.id,
       locationName: qrCode.location.name,
-      requestText
+      requestText: finalRequestText
     });
 
     return {
@@ -206,5 +234,20 @@ export class RequestsService {
   private clean(value?: string): string | undefined {
     const cleanValue = value?.trim();
     return cleanValue ? cleanValue : undefined;
+  }
+
+  private buildMediaOnlyRequestText(media: StoredRequestMedia[]) {
+    const imageCount = media.filter((item) => item.type === RequestMediaType.IMAGE).length;
+    const hasAudio = media.some((item) => item.type === RequestMediaType.AUDIO);
+
+    if (imageCount > 0 && hasAudio) {
+      return 'Fotoğraf ve ses kaydı ile talep oluşturuldu';
+    }
+
+    if (imageCount > 0) {
+      return 'Fotoğraf ile talep oluşturuldu';
+    }
+
+    return 'Ses kaydı ile talep oluşturuldu';
   }
 }

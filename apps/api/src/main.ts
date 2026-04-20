@@ -1,6 +1,8 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { config } from 'dotenv';
+import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AppModule } from './app.module';
 
@@ -40,7 +42,11 @@ function parseCorsOrigin() {
 }
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const uploadRoot = resolve(process.cwd(), process.env.UPLOAD_DIR || 'storage/uploads');
+
+  mkdirSync(uploadRoot, { recursive: true });
+  app.useStaticAssets(uploadRoot, { prefix: '/uploads/' });
 
   app.enableCors({
     origin: parseCorsOrigin(),

@@ -34,6 +34,11 @@ enum QrScanStatus {
   REQUEST_FAILED
 }
 
+enum RequestMediaType {
+  IMAGE
+  AUDIO
+}
+
 model Location {
   id              String           @id @default(cuid())
   name            String
@@ -73,19 +78,38 @@ model QrCode {
 }
 
 model VisitorRequest {
-  id          String         @id @default(cuid())
-  qrCodeId    String
-  qrCode      QrCode         @relation(fields: [qrCodeId], references: [id], onDelete: Restrict)
-  locationId  String
-  location    Location       @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  requestText String
-  channel     RequestChannel @default(QR_WEB)
-  task        Task?
-  scanLogs    QrScanLog[]
-  createdAt   DateTime       @default(now())
+  id             String         @id @default(cuid())
+  qrCodeId       String
+  qrCode         QrCode         @relation(fields: [qrCodeId], references: [id], onDelete: Restrict)
+  locationId     String
+  location       Location       @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  requestText    String
+  transcriptText String?
+  audioFileUrl   String?
+  channel        RequestChannel @default(QR_WEB)
+  task           Task?
+  scanLogs       QrScanLog[]
+  media          RequestMedia[]
+  createdAt      DateTime       @default(now())
 
   @@index([qrCodeId])
   @@index([locationId])
+}
+
+model RequestMedia {
+  id           String           @id @default(cuid())
+  requestId    String
+  request      VisitorRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  type         RequestMediaType
+  fileUrl      String
+  storageKey   String
+  mimeType     String
+  fileSize     Int
+  originalName String?
+  createdAt    DateTime         @default(now())
+
+  @@index([requestId])
+  @@index([type])
 }
 
 model Task {
