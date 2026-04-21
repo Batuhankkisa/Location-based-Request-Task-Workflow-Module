@@ -53,6 +53,15 @@ interface TaskDetail {
   }>;
 }
 
+type TaskActionId = 'start' | 'complete' | 'approve' | 'reject';
+
+type ActionCard = {
+  id: TaskActionId;
+  label: string;
+  helper: string;
+  tone: 'navy' | 'success' | 'danger';
+};
+
 const auth = useAuth();
 const route = useRoute();
 const id = computed(() => String(route.params.id ?? ''));
@@ -60,6 +69,8 @@ const note = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const actionLoading = ref('');
+const selectedAction = ref<TaskActionId | ''>('');
+const noteInput = ref<HTMLTextAreaElement | null>(null);
 const apiBaseUrl = useApiBaseUrl();
 
 const { data, pending, error, refresh } = await useAsyncData(`task-${id.value}`, () =>
@@ -74,18 +85,156 @@ const primaryAudioUrl = computed(() => task.value?.request.audioFileUrl ?? audio
 const currentUser = computed(() => auth.user.value);
 const canApprove = computed(() => auth.hasRole(Role.ADMIN, Role.SUPERVISOR));
 
-function formatDate(value?: string | null) {
-  if (!value) {
-    return '-';
+const requestSummary = computed(() => parseStructuredRequest(task.value?.request.requestText ?? ''));
+const statusMeta = computed(() => getStatusMeta(task.value?.status));
+const availableActions = computed<ActionCard[]>(() => {
+  if (!task.value) {
+    return [];
   }
 
-  return new Intl.DateTimeFormat('tr-TR', {
-    dateStyle: 'short',
-    timeStyle: 'short'
-  }).format(new Date(value));
+  if (task.value.status === TaskStatus.NEW) {
+    return [
+      {
+        id: 'start',
+        label: 'Goreve Basla',
+        helper: 'Talebi uzerine al',
+        tone: 'navy'
+      }
+    ];
+  }
+
+  if (task.value.status === TaskStatus.IN_PROGRESS) {
+    return [
+      {
+        id: 'complete',
+        label: 'Is Bitti',
+        helper: 'Gorevi onaya gonder',
+        tone: 'success'
+      }
+    ];
+  }
+
+  if (task.value.status === TaskStatus.DONE_WAITING_APPROVAL && canApprove.value) {
+    return [
+      {
+        id: 'approve',
+        label: 'Onayla',
+        helper: 'Gorevi kapat',
+        tone: 'success'
+      },
+      {
+        id: 'reject',
+        label: 'Reddet',
+        helper: 'Revizyona gonder',
+        tone: 'danger'
+      }
+    ];
+  }
+
+  return [];
+});
+
+watch(
+  availableActions,
+  (actions) => {
+    if (!actions.find((action) => action.id === selectedAction.value)) {
+      selectedAction.value = actions[0]?.id ?? '';
+    }
+  },
+  { immediate: true }
+);
+
+function parseStructuredRequest(value: string) {
+  const lines = value
+    .split('\n')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  let category = 'Genel Talep';
+  let title = 'Operasyon talebi';
+  const descriptionLines: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('Kategori:')) {
+      category = line.replace('Kategori:', '').trim() || category;
+      continue;
+    }
+
+    if (line.startsWith('Baslik:')) {
+      title = line.replace('Baslik:', '').trim() || title;
+      continue;
+    }
+
+    if (line.startsWith('Aciklama:')) {
+      descriptionLines.push(line.replace('Aciklama:', '').trim());
+      continue;
+    }
+
+    descriptionLines.push(line);
+  }
+
+  return {
+    category,
+    title,
+    description: descriptionLines.join('\n').trim() || value
+  };
 }
 
-async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
+function getStatusMeta(status?: TaskStatus) {
+  switch (status) {
+    case TaskStatus.NEW:
+      return {
+        kicker: 'Acik Gorev',
+        label: 'Yeni task hazir',
+        helper: 'Talep siraya alindi'
+      };
+    case TaskStatus.IN_PROGRESS:
+      return {
+        kicker: 'Sahada',
+        label: 'Islem devam ediyor',
+        helper: 'Gorev aktif sekilde suruyor'
+      };
+    case TaskStatus.DONE_WAITING_APPROVAL:
+      return {
+        kicker: 'Onay Bekliyor',
+        label: 'Yonetici aksiyonu gerekli',
+        helper: 'Supervisor veya admin onayi bekleniyor'
+      };
+    case TaskStatus.APPROVED:
+      return {
+        kicker: 'Kapandi',
+        label: 'Gorev onaylandi',
+        helper: 'Akis tamamlandi'
+      };
+    case TaskStatus.REJECTED:
+      return {
+        kicker: 'Revizyon',
+        label: 'Gorev reddedildi',
+        helper: 'Not ile tekrar ele alinmali'
+      };
+    default:
+      return {
+        kicker: 'Gorev',
+        label: 'Durum okunamadi',
+        helper: 'Aksiyon bilgisi bekleniyor'
+      };
+  }
+}
+
+function focusNote() {
+  noteInput.value?.focus();
+}
+
+async function submitSelectedAction() {
+  if (!selectedAction.value) {
+    actionError.value = 'Bu durum icin gonderilecek bir aksiyon yok.';
+    return;
+  }
+
+  await runAction(selectedAction.value);
+}
+
+async function runAction(action: TaskActionId) {
   actionError.value = '';
   actionMessage.value = '';
   actionLoading.value = action;
@@ -98,11 +247,11 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
       }
     });
 
-    actionMessage.value = 'Task guncellendi.';
+    actionMessage.value = 'Gorev durumu guncellendi.';
     note.value = '';
     await refresh();
-  } catch (error) {
-    actionError.value = getApiErrorMessage(error, 'Task guncellenemedi.');
+  } catch (requestError) {
+    actionError.value = getApiErrorMessage(requestError, 'Gorev guncellenemedi.');
   } finally {
     actionLoading.value = '';
   }
@@ -118,206 +267,177 @@ function mediaUrl(fileUrl: string) {
   return `${baseUrl}${path}`;
 }
 
-function formatBytes(value: number) {
-  if (value < 1024 * 1024) {
-    return `${Math.round(value / 1024)} KB`;
+function formatDate(value?: string | null) {
+  if (!value) {
+    return '-';
   }
 
-  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+  return new Intl.DateTimeFormat('tr-TR', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(new Date(value));
 }
 </script>
 
 <template>
-  <section class="section">
-    <div class="page-heading">
-      <div>
-        <p class="eyebrow">Task detayi</p>
-        <h1>{{ task?.location.name ?? 'Task' }}</h1>
+  <section class="mobile-flow task-update-flow">
+    <div class="mobile-shell task-update-shell">
+      <header class="mobile-hero task-hero">
+        <div class="mobile-hero-row">
+          <NuxtLink class="mobile-back" to="/admin/tasks">Geri</NuxtLink>
+        </div>
+
+        <div v-if="task" class="task-status-chip">
+          <span class="task-status-dot" />
+          <strong>{{ statusMeta.kicker }}</strong>
+        </div>
+
+        <div>
+          <h1>Gorevi Guncelle</h1>
+          <p>{{ statusMeta.helper }}</p>
+        </div>
+      </header>
+
+      <div v-if="pending" class="mobile-card mobile-state-card">
+        <p>Gorev detayi yukleniyor...</p>
       </div>
-      <NuxtLink class="button" to="/admin/tasks">Listeye don</NuxtLink>
-    </div>
 
-    <div v-if="pending" class="panel">
-      <p>Task detayi yukleniyor...</p>
-    </div>
+      <div v-else-if="error" class="mobile-card error-panel mobile-state-card">
+        <h2>Gorev bulunamadi</h2>
+        <p>Istenen gorev kaydi acilamadi.</p>
+      </div>
 
-    <div v-else-if="error" class="panel error-panel">
-      <p>Task bulunamadi.</p>
-    </div>
+      <div v-else-if="task" class="task-update-layout">
+        <aside class="task-side-stack">
+          <section class="mobile-card task-summary-card">
+            <div class="task-summary-grid">
+              <div>
+                <span>Konum</span>
+                <strong>{{ task.location.name }}</strong>
+              </div>
+              <div>
+                <span>Kategori</span>
+                <strong>{{ requestSummary.category }}</strong>
+              </div>
+              <div>
+                <span>Durum</span>
+                <strong>{{ statusMeta.label }}</strong>
+              </div>
+              <div>
+                <span>Atanan</span>
+                <strong>{{ task.assignedTo ?? currentUser?.fullName ?? '-' }}</strong>
+              </div>
+            </div>
 
-    <div v-else-if="task" class="detail-grid">
-      <section class="panel">
-        <p class="eyebrow">Durum</p>
-        <h2><span class="status-pill">{{ task.status }}</span></h2>
-        <dl class="definition-list">
-          <div>
-            <dt>Olusturuldu</dt>
-            <dd>{{ formatDate(task.createdAt) }}</dd>
-          </div>
-          <div>
-            <dt>Atanan</dt>
-            <dd>{{ task.assignedTo ?? '-' }}</dd>
-          </div>
-          <div>
-            <dt>Tamamlayan</dt>
-            <dd>{{ task.completedBy ?? '-' }}</dd>
-          </div>
-          <div>
-            <dt>Onaylayan</dt>
-            <dd>{{ task.approvedBy ?? '-' }}</dd>
-          </div>
-          <div>
-            <dt>Tamamlandi</dt>
-            <dd>{{ formatDate(task.completedAt) }}</dd>
-          </div>
-          <div>
-            <dt>Onaylandi</dt>
-            <dd>{{ formatDate(task.approvedAt) }}</dd>
-          </div>
-        </dl>
-      </section>
+            <div class="task-request-brief">
+              <strong>{{ requestSummary.title }}</strong>
+              <p>{{ requestSummary.description }}</p>
+            </div>
+          </section>
 
-      <section class="panel">
-        <p class="eyebrow">Talep</p>
-        <h2>{{ task.location.name }}</h2>
-        <p>{{ task.request.requestText }}</p>
+          <section class="mobile-card task-history-card">
+            <div class="section-heading">
+              <p class="eyebrow">Gecmis</p>
+              <h2>Status akisi</h2>
+            </div>
 
-        <div v-if="task.request.transcriptText" class="request-media-block">
-          <h3>Transcript</h3>
-          <p>{{ task.request.transcriptText }}</p>
-        </div>
+            <div class="task-history-list">
+              <article v-for="item in task.history" :key="item.id" class="task-history-item">
+                <strong>{{ item.toStatus }}</strong>
+                <span>{{ formatDate(item.createdAt) }}</span>
+                <p>{{ item.note ?? item.changedBy ?? 'Not yok' }}</p>
+              </article>
+            </div>
+          </section>
+        </aside>
 
-        <div v-if="primaryAudioUrl" class="request-media-block">
-          <h3>Ses kaydi</h3>
-          <audio class="audio-player" :src="mediaUrl(primaryAudioUrl)" controls />
-        </div>
+        <div class="task-main-stack">
+          <section class="mobile-card task-action-zone">
+            <div class="section-heading">
+              <p class="eyebrow">Aksiyon Secin</p>
+              <h2>Gorev durumu</h2>
+            </div>
 
-        <div v-if="imageMedia.length" class="request-media-block">
-          <h3>Fotograflar</h3>
-          <div class="admin-media-grid">
-            <a
-              v-for="image in imageMedia"
-              :key="image.id"
-              :href="mediaUrl(image.fileUrl)"
-              target="_blank"
-              rel="noreferrer"
-              class="admin-media-image"
+            <div class="task-action-grid">
+              <button
+                v-for="action in availableActions"
+                :key="action.id"
+                type="button"
+                class="task-action-card"
+                :class="[
+                  `tone-${action.tone}`,
+                  { 'is-selected': selectedAction === action.id, 'is-busy': actionLoading === action.id }
+                ]"
+                @click="selectedAction = action.id"
+              >
+                <strong>{{ action.label }}</strong>
+                <span>{{ action.helper }}</span>
+              </button>
+
+              <button type="button" class="task-action-card tone-note" @click="focusNote">
+                <strong>Not Ekle</strong>
+                <span>Aciklama ya da revizyon notu yaz</span>
+              </button>
+            </div>
+          </section>
+
+          <section class="mobile-card task-note-card">
+            <label for="note">Not / Aciklama</label>
+            <textarea
+              id="note"
+              ref="noteInput"
+              v-model="note"
+              rows="5"
+              placeholder="Yapilan islem, eksik malzeme veya ek aciklama..."
+            />
+          </section>
+
+          <section
+            v-if="requestMedia.length || task.request.transcriptText || primaryAudioUrl"
+            class="mobile-card task-media-card"
+          >
+            <div class="section-heading">
+              <p class="eyebrow">Ekler</p>
+              <h2>Talep medyasi</h2>
+            </div>
+
+            <p v-if="task.request.transcriptText" class="task-transcript-copy">{{ task.request.transcriptText }}</p>
+
+            <audio v-if="primaryAudioUrl" class="audio-player" :src="mediaUrl(primaryAudioUrl)" controls />
+
+            <div v-if="imageMedia.length" class="request-photo-grid">
+              <a
+                v-for="image in imageMedia"
+                :key="image.id"
+                :href="mediaUrl(image.fileUrl)"
+                target="_blank"
+                rel="noreferrer"
+                class="request-photo-card request-photo-link"
+              >
+                <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotografi'" />
+                <div>
+                  <strong>{{ image.originalName ?? 'Talep fotografi' }}</strong>
+                  <span>{{ formatDate(image.createdAt) }}</span>
+                </div>
+              </a>
+            </div>
+          </section>
+
+          <section class="mobile-card task-submit-card">
+            <button
+              class="request-submit-button"
+              type="button"
+              :disabled="!selectedAction || Boolean(actionLoading)"
+              @click="submitSelectedAction"
             >
-              <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotografi'" />
-            </a>
-          </div>
+              {{ actionLoading ? 'Durum gonderiliyor...' : 'Durumu Gonder' }}
+            </button>
+
+            <p v-if="actionError" class="error-text">{{ actionError }}</p>
+            <p v-if="actionMessage" class="success-text">{{ actionMessage }}</p>
+          </section>
         </div>
-
-        <p v-if="!task.request.transcriptText && !requestMedia.length" class="muted">
-          Bu talepte medya veya transcript yok.
-        </p>
-        <p class="muted">
-          {{ task.location.code }} · {{ task.location.type }} · {{ task.request.qrCode.token }}
-        </p>
-      </section>
-
-      <section class="panel action-panel">
-        <p class="eyebrow">Aksiyon</p>
-        <p class="muted">Islem yapan: {{ currentUser?.fullName ?? currentUser?.email ?? '-' }}</p>
-
-        <label for="note">Not</label>
-        <textarea id="note" v-model="note" rows="3" placeholder="Opsiyonel not" />
-
-        <div class="button-row">
-          <button
-            class="button primary"
-            type="button"
-            :disabled="task.status !== TaskStatus.NEW || Boolean(actionLoading)"
-            @click="runAction('start')"
-          >
-            {{ actionLoading === 'start' ? 'Baslatiliyor...' : 'Baslat' }}
-          </button>
-          <button
-            class="button primary"
-            type="button"
-            :disabled="task.status !== TaskStatus.IN_PROGRESS || Boolean(actionLoading)"
-            @click="runAction('complete')"
-          >
-            {{ actionLoading === 'complete' ? 'Tamamlaniyor...' : 'Tamamla' }}
-          </button>
-          <button
-            v-if="canApprove"
-            class="button approve"
-            type="button"
-            :disabled="task.status !== TaskStatus.DONE_WAITING_APPROVAL || Boolean(actionLoading)"
-            @click="runAction('approve')"
-          >
-            {{ actionLoading === 'approve' ? 'Onaylaniyor...' : 'Onayla' }}
-          </button>
-          <button
-            v-if="canApprove"
-            class="button danger"
-            type="button"
-            :disabled="task.status !== TaskStatus.DONE_WAITING_APPROVAL || Boolean(actionLoading)"
-            @click="runAction('reject')"
-          >
-            {{ actionLoading === 'reject' ? 'Reddediliyor...' : 'Reddet' }}
-          </button>
-        </div>
-
-        <p v-if="actionError" class="error-text">{{ actionError }}</p>
-        <p v-if="actionMessage" class="success-text">{{ actionMessage }}</p>
-      </section>
-
-      <section class="panel full-span">
-        <p class="eyebrow">Medya metadata</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Tip</th>
-              <th>Dosya</th>
-              <th>MIME</th>
-              <th>Boyut</th>
-              <th>Yuklendi</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in requestMedia" :key="item.id">
-              <td>{{ item.type }}</td>
-              <td>
-                <a :href="mediaUrl(item.fileUrl)" target="_blank" rel="noreferrer">
-                  {{ item.originalName ?? item.fileUrl }}
-                </a>
-              </td>
-              <td>{{ item.mimeType }}</td>
-              <td>{{ formatBytes(item.fileSize) }}</td>
-              <td>{{ formatDate(item.createdAt) }}</td>
-            </tr>
-            <tr v-if="requestMedia.length === 0">
-              <td colspan="5">Medya dosyasi yok.</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
-
-      <section class="panel full-span">
-        <p class="eyebrow">Status history</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Tarih</th>
-              <th>Once</th>
-              <th>Sonra</th>
-              <th>Islem yapan</th>
-              <th>Not</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in task.history" :key="item.id">
-              <td>{{ formatDate(item.createdAt) }}</td>
-              <td>{{ item.fromStatus ?? '-' }}</td>
-              <td>{{ item.toStatus }}</td>
-              <td>{{ item.changedBy ?? '-' }}</td>
-              <td>{{ item.note ?? '-' }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      </div>
     </div>
   </section>
 </template>
