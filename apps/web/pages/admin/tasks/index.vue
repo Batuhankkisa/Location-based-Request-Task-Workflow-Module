@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { Role } from '@lbrtw/shared';
+
+definePageMeta({
+  middleware: 'admin-auth',
+  roles: [Role.ADMIN, Role.SUPERVISOR, Role.STAFF]
+});
+
 interface TaskListItem {
   id: string;
   status: string;
@@ -38,20 +45,20 @@ function formatDate(value: string) {
     </div>
 
     <div v-if="pending" class="panel">
-      <p>Tasklar yükleniyor...</p>
+      <p>Tasklar yukleniyor...</p>
     </div>
 
     <div v-else-if="error" class="panel error-panel">
-      <p>Tasklar alınamadı.</p>
+      <p>Tasklar alinamadi.</p>
     </div>
 
     <div v-else class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Oluşturulma tarihi</th>
+            <th>Olusturulma</th>
             <th>Lokasyon</th>
-            <th>Talep metni</th>
+            <th>Talep</th>
             <th>Durum</th>
             <th>Aksiyon</th>
           </tr>
@@ -70,7 +77,7 @@ function formatDate(value: string) {
             </td>
           </tr>
           <tr v-if="tasks.length === 0">
-            <td colspan="5">Henüz task yok.</td>
+            <td colspan="5">Henuz task yok.</td>
           </tr>
         </tbody>
       </table>

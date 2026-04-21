@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { TaskStatus } from '@lbrtw/shared';
+import { Role, TaskStatus } from '@lbrtw/shared';
+
+definePageMeta({
+  middleware: 'admin-auth',
+  roles: [Role.ADMIN, Role.SUPERVISOR, Role.STAFF]
+});
 
 interface TaskMedia {
   id: string;
@@ -48,18 +53,17 @@ interface TaskDetail {
   }>;
 }
 
+const auth = useAuth();
 const route = useRoute();
 const id = computed(() => String(route.params.id ?? ''));
-const changedBy = ref('Demo Personel');
 const note = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const actionLoading = ref('');
 const apiBaseUrl = useApiBaseUrl();
 
-const { data, pending, error, refresh } = await useAsyncData(
-  `task-${id.value}`,
-  () => useApiFetch<ApiResponse<TaskDetail>>(`/tasks/${encodeURIComponent(id.value)}`)
+const { data, pending, error, refresh } = await useAsyncData(`task-${id.value}`, () =>
+  useApiFetch<ApiResponse<TaskDetail>>(`/tasks/${encodeURIComponent(id.value)}`)
 );
 
 const task = computed(() => data.value?.data);
@@ -67,6 +71,8 @@ const requestMedia = computed(() => task.value?.request.media ?? []);
 const imageMedia = computed(() => requestMedia.value.filter((item) => item.type === 'IMAGE'));
 const audioMedia = computed(() => requestMedia.value.filter((item) => item.type === 'AUDIO'));
 const primaryAudioUrl = computed(() => task.value?.request.audioFileUrl ?? audioMedia.value[0]?.fileUrl ?? '');
+const currentUser = computed(() => auth.user.value);
+const canApprove = computed(() => auth.hasRole(Role.ADMIN, Role.SUPERVISOR));
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -88,17 +94,15 @@ async function runAction(action: 'start' | 'complete' | 'approve' | 'reject') {
     await useApiFetch<ApiResponse<TaskDetail>>(`/tasks/${id.value}/${action}`, {
       method: 'PATCH',
       body: {
-        changedBy: changedBy.value,
-        assignedTo: changedBy.value,
         note: note.value
       }
     });
 
-    actionMessage.value = 'Task güncellendi.';
+    actionMessage.value = 'Task guncellendi.';
     note.value = '';
     await refresh();
-  } catch (err) {
-    actionError.value = err instanceof Error ? err.message : 'Task güncellenemedi.';
+  } catch (error) {
+    actionError.value = getApiErrorMessage(error, 'Task guncellenemedi.');
   } finally {
     actionLoading.value = '';
   }
@@ -127,18 +131,18 @@ function formatBytes(value: number) {
   <section class="section">
     <div class="page-heading">
       <div>
-        <p class="eyebrow">Task detayı</p>
+        <p class="eyebrow">Task detayi</p>
         <h1>{{ task?.location.name ?? 'Task' }}</h1>
       </div>
-      <NuxtLink class="button" to="/admin/tasks">Listeye dön</NuxtLink>
+      <NuxtLink class="button" to="/admin/tasks">Listeye don</NuxtLink>
     </div>
 
     <div v-if="pending" class="panel">
-      <p>Task detayı yükleniyor...</p>
+      <p>Task detayi yukleniyor...</p>
     </div>
 
     <div v-else-if="error" class="panel error-panel">
-      <p>Task bulunamadı.</p>
+      <p>Task bulunamadi.</p>
     </div>
 
     <div v-else-if="task" class="detail-grid">
@@ -147,7 +151,7 @@ function formatBytes(value: number) {
         <h2><span class="status-pill">{{ task.status }}</span></h2>
         <dl class="definition-list">
           <div>
-            <dt>Oluşturuldu</dt>
+            <dt>Olusturuldu</dt>
             <dd>{{ formatDate(task.createdAt) }}</dd>
           </div>
           <div>
@@ -163,11 +167,11 @@ function formatBytes(value: number) {
             <dd>{{ task.approvedBy ?? '-' }}</dd>
           </div>
           <div>
-            <dt>Tamamlandı</dt>
+            <dt>Tamamlandi</dt>
             <dd>{{ formatDate(task.completedAt) }}</dd>
           </div>
           <div>
-            <dt>Onaylandı</dt>
+            <dt>Onaylandi</dt>
             <dd>{{ formatDate(task.approvedAt) }}</dd>
           </div>
         </dl>
@@ -184,12 +188,12 @@ function formatBytes(value: number) {
         </div>
 
         <div v-if="primaryAudioUrl" class="request-media-block">
-          <h3>Ses kaydı</h3>
+          <h3>Ses kaydi</h3>
           <audio class="audio-player" :src="mediaUrl(primaryAudioUrl)" controls />
         </div>
 
         <div v-if="imageMedia.length" class="request-media-block">
-          <h3>Fotoğraflar</h3>
+          <h3>Fotograflar</h3>
           <div class="admin-media-grid">
             <a
               v-for="image in imageMedia"
@@ -199,7 +203,7 @@ function formatBytes(value: number) {
               rel="noreferrer"
               class="admin-media-image"
             >
-              <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotoğrafı'" />
+              <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotografi'" />
             </a>
           </div>
         </div>
@@ -214,8 +218,7 @@ function formatBytes(value: number) {
 
       <section class="panel action-panel">
         <p class="eyebrow">Aksiyon</p>
-        <label for="changedBy">İşlem yapan</label>
-        <input id="changedBy" v-model="changedBy" type="text" />
+        <p class="muted">Islem yapan: {{ currentUser?.fullName ?? currentUser?.email ?? '-' }}</p>
 
         <label for="note">Not</label>
         <textarea id="note" v-model="note" rows="3" placeholder="Opsiyonel not" />
@@ -227,7 +230,7 @@ function formatBytes(value: number) {
             :disabled="task.status !== TaskStatus.NEW || Boolean(actionLoading)"
             @click="runAction('start')"
           >
-            {{ actionLoading === 'start' ? 'Başlatılıyor...' : 'Başlat' }}
+            {{ actionLoading === 'start' ? 'Baslatiliyor...' : 'Baslat' }}
           </button>
           <button
             class="button primary"
@@ -235,17 +238,19 @@ function formatBytes(value: number) {
             :disabled="task.status !== TaskStatus.IN_PROGRESS || Boolean(actionLoading)"
             @click="runAction('complete')"
           >
-            {{ actionLoading === 'complete' ? 'Tamamlanıyor...' : 'Tamamla' }}
+            {{ actionLoading === 'complete' ? 'Tamamlaniyor...' : 'Tamamla' }}
           </button>
           <button
+            v-if="canApprove"
             class="button approve"
             type="button"
             :disabled="task.status !== TaskStatus.DONE_WAITING_APPROVAL || Boolean(actionLoading)"
             @click="runAction('approve')"
           >
-            {{ actionLoading === 'approve' ? 'Onaylanıyor...' : 'Onayla' }}
+            {{ actionLoading === 'approve' ? 'Onaylaniyor...' : 'Onayla' }}
           </button>
           <button
+            v-if="canApprove"
             class="button danger"
             type="button"
             :disabled="task.status !== TaskStatus.DONE_WAITING_APPROVAL || Boolean(actionLoading)"
@@ -268,7 +273,7 @@ function formatBytes(value: number) {
               <th>Dosya</th>
               <th>MIME</th>
               <th>Boyut</th>
-              <th>Yüklendi</th>
+              <th>Yuklendi</th>
             </tr>
           </thead>
           <tbody>
@@ -284,7 +289,7 @@ function formatBytes(value: number) {
               <td>{{ formatDate(item.createdAt) }}</td>
             </tr>
             <tr v-if="requestMedia.length === 0">
-              <td colspan="5">Medya dosyası yok.</td>
+              <td colspan="5">Medya dosyasi yok.</td>
             </tr>
           </tbody>
         </table>
@@ -296,9 +301,9 @@ function formatBytes(value: number) {
           <thead>
             <tr>
               <th>Tarih</th>
-              <th>Önce</th>
+              <th>Once</th>
               <th>Sonra</th>
-              <th>İşlem yapan</th>
+              <th>Islem yapan</th>
               <th>Not</th>
             </tr>
           </thead>

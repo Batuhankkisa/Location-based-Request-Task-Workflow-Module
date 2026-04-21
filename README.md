@@ -1,332 +1,246 @@
 # Location-based-Request-Task-Workflow-Module
 
-QR okutulduğunda public kullanıcının lokasyona bağlı talep açtığı, talebin otomatik taska dönüştüğü ve operasyon/amirin task akışını yönettiği hızlı MVP.
+QR okutuldugunda public kullanicinin lokasyona bagli talep actigi, talebin otomatik task'a donustugu ve personel tarafinin JWT ile korundugu NestJS + Nuxt monorepo MVP'si.
 
-> Güvenlik notu: Admin/staff ekranlarında auth yoktur. Bu repo şu haliyle staging/demo içindir. Production kullanımı için admin/staff auth, yetkilendirme, rate limit ve audit kontrolleri eklenmelidir.
-
-## Klasör Yapısı
+## Yapi
 
 ```text
 /
   apps/
-    api/        NestJS API, Prisma schema, migration ve seed
-    web/        Nuxt web uygulaması
+    api/        NestJS API, Prisma schema, migrations, seed
+    web/        Nuxt web uygulamasi
   packages/
-    shared/     Ortak enum ve tipler
+    shared/     Ortak enumlar
   infra/
     docker-compose.yml
-  render.yaml   Render staging Blueprint örneği
   .env.example
-  pnpm-workspace.yaml
-  package.json
   README.md
 ```
 
 ## Teknolojiler
 
 - Monorepo: pnpm workspace
-- Frontend: Nuxt 3, Vue 3, TypeScript
-- Backend: NestJS, TypeScript
-- ORM: Prisma
-- DB: PostgreSQL
-- Infra hazırlığı: Redis
-- Notification: adapter yapısı, `ConsoleNotificationProvider`
-- Shared package: `TaskStatus`, `LocationType`, `RequestChannel`
+- API: NestJS, Prisma, PostgreSQL
+- Web: Nuxt 3, Vue 3, TypeScript
+- Auth: JWT access token + role-based authorization
+- Password hashing: bcryptjs
 
-## Lokal Kurulum
+## Roller
 
-Windows PowerShell `pnpm.ps1` execution policy hatası verirse komutlarda `pnpm` yerine `pnpm.cmd` kullan.
+- `ADMIN`
+- `SUPERVISOR`
+- `STAFF`
 
-```bash
-pnpm install
-cp .env.example .env
-```
+Yetki ozet:
 
-Windows PowerShell:
+- `STAFF`: task listesi, task detayi, `start`, `complete`
+- `SUPERVISOR`: STAFF yetkileri + `approve`, `reject`
+- `ADMIN`: task, QR, location ve user listesi endpointleri
 
-```powershell
-pnpm.cmd install
-Copy-Item .env.example .env
-```
+## Public ve Protected Akis
 
-Nuxt web tarafı Windows/OneDrive altında daha stabil çalışması için Nuxt 3.15.1/Vite 6 hattına sabitlenmiştir ve dev script’i `nuxi dev --no-fork` kullanır. Eski kurulumdan gelen `.nuxt`, `.output` veya `node_modules` klasörleri varsa temiz kurulum önerilir.
+Public kalan route'lar:
 
-## Docker Compose
-
-Docker Desktop çalışır durumda olmalı.
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml up -d
-```
-
-Bu komut PostgreSQL `5432`, Redis `6379` portlarını açar.
-
-## Prisma
-
-Lokal geliştirme için:
-
-```bash
-pnpm prisma:generate
-pnpm prisma:migrate
-pnpm prisma:seed
-```
-
-Staging/production deploy için migration komutu:
-
-```bash
-pnpm prisma:migrate:deploy
-```
-
-`prisma migrate deploy`, mevcut migration dosyalarını hedef veritabanına uygular. Staging/production ortamında `prisma migrate dev` kullanılmamalıdır.
-
-Seed her deploy’da otomatik koşmamalıdır. İlk staging kurulumu veya demo datasını yenilemek gerektiğinde manuel çalıştır:
-
-```bash
-pnpm prisma:seed
-```
-
-Seed tekrar çalıştırılabilir. Demo verileri:
-
-- Özel Hastane A
-- 1. Kat: 101, 102, 103 No’lu Odalar
-- 2. Kat: 201, 202, 203 No’lu Odalar
-- 3. Kat: 301, 302, 303 No’lu Odalar
-- 4. Kat: 401, 402 No’lu Odalar
-- Yeni token formatı: `hsp-a-f1-r101-demo`, `hsp-a-f2-r201-demo`, `hsp-a-f3-r301-demo`
-- Geriye dönük uyum için korunan tokenlar: `room-401-demo-token`, `room-402-demo-token`
-
-## Uygulamaları Çalıştırma
-
-```bash
-pnpm dev
-```
-
-Ayrı ayrı çalıştırmak için:
-
-```bash
-pnpm dev:api
-pnpm dev:web
-```
-
-Varsayılan adresler:
-
-- Web: `http://localhost:3000`
-- API: `http://localhost:3001`
-- Health: `http://localhost:3001/health`
-
-## Build ve Start Komutları
-
-Root workspace üzerinden çalıştır:
-
-```bash
-pnpm build:api
-pnpm start:api
-
-pnpm build:web
-pnpm start:web
-```
-
-API production start komutu `apps/api/dist/main.js` dosyasını çalıştırır. Web production start komutu Nuxt/Nitro çıktısı olan `apps/web/.output/server/index.mjs` dosyasını çalıştırır.
-
-## Render Staging Deploy
-
-Render için iki ayrı Web Service ve bir Render Postgres kullanılacak:
-
-- API service: `lbrtw-api-staging`
-- Web service: `lbrtw-web-staging`
-- Postgres: `lbrtw-postgres-staging`
-
-Repo kökündeki `render.yaml` bu staging yapısı için Blueprint örneğidir. Service isimlerini değiştirirsen `CORS_ORIGIN` ve `NUXT_PUBLIC_API_BASE_URL` değerlerini de yeni `.onrender.com` URL’lerine göre güncelle.
-
-Render monorepo notu: API ve Web service için Root Directory alanını `apps/api` veya `apps/web` yapma. Bu repo `packages/shared` workspace paketine bağlı olduğu için komutlar repo root’undan çalışmalıdır. Render’da root directory boş bırakılırsa repo kökü kullanılır.
-
-Render dokümanları:
-
-- Monorepo ve root directory: https://render.com/docs/monorepo-support
-- Blueprint `render.yaml`: https://render.com/docs/blueprint-spec
-- Deploy build/pre-deploy/start akışı: https://render.com/docs/deploys
-- Web service port/host beklentisi: https://render.com/docs/web-services
-
-### Render Postgres
-
-1. Render Dashboard’da yeni PostgreSQL oluştur veya `render.yaml` Blueprint ile `lbrtw-postgres-staging` oluştur.
-2. API service env’ine `DATABASE_URL` olarak Render Postgres internal connection string ver.
-3. İlk deploy öncesi veya deploy sırasında migration için `pnpm prisma:migrate:deploy` çalıştır.
-4. Demo dataya ihtiyacın varsa migration sonrası `pnpm prisma:seed` komutunu bir kez manuel çalıştır.
-
-Free Postgres demo için uygundur ama süre, kapasite ve backup limitleri vardır. Staging verisini korumak istiyorsan paid plan kullan.
-
-### API Service
-
-Render Web Service oluştururken:
-
-- Root Directory: boş bırak, repo root kullanılsın
-- Runtime: Node
-- Build Command: `corepack enable && pnpm install --frozen-lockfile && pnpm build:api`
-- Pre-Deploy Command: `pnpm prisma:migrate:deploy`
-- Start Command: `pnpm start:api`
-- Health Check Path: `/health`
-
-API env değişkenleri:
-
-```text
-DATABASE_URL=<Render Postgres internal connection string>
-CORS_ORIGIN=https://lbrtw-web-staging.onrender.com
-NODE_ENV=production
-```
-
-Render `PORT` değerini otomatik verir. API bootstrap sırası `process.env.PORT || process.env.API_PORT || 3001` şeklindedir ve `0.0.0.0` host’unda dinler.
-
-Pre-Deploy Command, Render’da paid web service tarafında desteklenir. Free service ile ilerliyorsan migration komutunu deploy öncesinde manuel çalıştırman gerekir.
-
-### Web Service
-
-Render Web Service oluştururken:
-
-- Root Directory: boş bırak, repo root kullanılsın
-- Runtime: Node
-- Build Command: `corepack enable && pnpm install --frozen-lockfile && pnpm build:web`
-- Start Command: `pnpm start:web`
-
-Web env değişkenleri:
-
-```text
-NUXT_PUBLIC_API_BASE_URL=https://lbrtw-api-staging.onrender.com
-NODE_ENV=production
-```
-
-Nuxt tarafı API URL’ini `NUXT_PUBLIC_API_BASE_URL` üzerinden okur. Local fallback `http://localhost:3001` olarak kalır.
-
-## Env Değişkenleri
-
-`.env.example` local varsayılanları ve staging için gereken anahtarları gösterir. Gerçek staging değerleri Render Dashboard’dan girilmelidir.
-
-Önemli değişkenler:
-
-- `DATABASE_URL`: API için PostgreSQL connection string. Render’da internal connection string kullan.
-- `REDIS_URL`: Şu an runtime için zorunlu değil, ileride queue/cache için ayrıldı.
-- `API_PORT`: Local API fallback portu.
-- `PORT`: Render tarafından otomatik verilir; localde genellikle boş bırakılır.
-- `CORS_ORIGIN`: Browser’dan API’ye izin verilecek web origin’i. Staging’de web public URL’i olmalı.
-- `NUXT_PUBLIC_API_BASE_URL`: Web’in browser tarafında kullanacağı public API URL’i.
-
-## QR ve Demo Akışı
-
-Public QR sayfası Nuxt route olarak `/q/[token]` üstünden çalışır. Sayfa API tarafında `GET /public/qr/:token` ile token çözer, talep gönderirken `POST /public/requests` endpoint’ini kullanır.
-
-Lokal test:
-
-1. `http://localhost:3000/q/room-401-demo-token` adresini aç.
-2. Talep metni gir: `Havlu istiyorum`.
-3. `Talebi gönder` butonuna bas.
-4. `http://localhost:3000/admin/tasks` sayfasında yeni taskı gör.
-5. Task detayında sırasıyla `Başlat`, `Tamamla`, `Onayla` akışını çalıştır.
-
-Staging test:
-
-1. `https://lbrtw-api-staging.onrender.com/health` adresinden API health kontrolü yap.
-2. `https://lbrtw-web-staging.onrender.com/q/room-401-demo-token` adresini telefonda aç.
-3. Talep oluştur.
-4. `https://lbrtw-web-staging.onrender.com/admin/tasks` sayfasında taskı kontrol et.
-5. Task detayına girip state geçişlerini test et.
-
-`room-401-demo-token` staging’de çalışması için staging veritabanında seed çalışmış olmalıdır.
-
-## QR Yönetimi ve Loglama
-
-`QrCode` modeli QR yönetimi için metadata tutar: aktif/pasif durum, pasife alma zamanı, son okutulma zamanı, toplam okutulma sayısı, görsel yolu ve opsiyonel not. QR görsel binary’si DB’ye yazılmaz.
-
-Her QR çözümleme denemesi `QrScanLog` kaydına düşer. Log; token snapshot, okutulma zamanı, IP, user agent, çözülen lokasyon, durum, varsa oluşan `VisitorRequest` ve `Task` bağlantılarını tutar. Geçersiz token da `TOKEN_NOT_FOUND` olarak loglanır. Pasif QR okutulursa `INACTIVE` loglanır ve public API `404` döner.
-
-QR görsel yolu konvansiyonu:
-
-```text
-/qr-assets/{token}.png
-```
-
-MVP için en pratik saklama yeri `apps/web/public/qr-assets` klasörüdür. Bu klasöre koyulan dosyalar Nuxt tarafından `/qr-assets/...` public path’iyle servis edilir. Seed sadece `imagePath` metadata’sını üretir; fiziksel PNG üretimi bu sürümde zorunlu değildir.
-
-Admin QR ekranları:
-
-- `/admin/qrs`: QR listesi, lokasyon, token, aktiflik, scan count, son kullanım ve görsel path bilgisini gösterir.
-- `/admin/qrs/[id]`: QR detayı, metadata, activate/deactivate aksiyonları ve son scan loglarını gösterir.
-
-Normal public akışta `/q/[token]` açıldığında scan log oluşur, `scanCount` artar ve `lastScannedAt` güncellenir. Talep gönderilirse aynı scan log `REQUEST_CREATED` durumuna güncellenip request/task ile ilişkilendirilir.
-
-## Voice-to-Text ve Request Media
-
-Public QR ekranı `/q/[token]` üzerinden metin, transcript, ses kaydı ve fotoğraf gönderebilir. Tarayıcı destekliyorsa Web Speech API ile `transcriptText` üretilir; destek yoksa kullanıcı yine `MediaRecorder` ile ses kaydı alabilir veya transcript alanını elle doldurabilir.
-
-`POST /public/requests` JSON akışını korur ve ayrıca `multipart/form-data` kabul eder:
-
-- `token`: QR token
-- `requestText`: kullanıcı talep metni, opsiyonel
-- `transcriptText`: speech-to-text çıktısı veya elle girilen transcript, opsiyonel
-- `scanLogId`: QR resolve sırasında dönen log id, opsiyonel
-- `images`: çoklu fotoğraf dosyası
-- `audio`: tek ses kaydı dosyası
-
-Validasyon:
-
-- Talep göndermek için `requestText`, `transcriptText`, ses kaydı veya fotoğraftan en az biri olmalıdır.
-- Fotoğraf: `jpeg`, `png`, `webp`; dosya başına maksimum 5 MB; en fazla 5 adet.
-- Ses: `webm`, `wav`, `mp3`, `ogg`, `m4a`, `aac`; maksimum 10 MB; en fazla 1 adet.
-- Sadece fotoğraf veya sadece ses gönderilirse backend `requestText` için anlamlı bir fallback metin üretir.
-
-Upload storage:
-
-- Kullanıcı dosyaları DB’ye binary olarak yazılmaz.
-- Varsayılan klasör: `apps/api/storage/uploads/request-media`.
-- API bu klasörü `/uploads/request-media/...` path’iyle servis eder.
-- DB’de `VisitorRequest.transcriptText`, `VisitorRequest.audioFileUrl` ve `RequestMedia.fileUrl` / metadata alanları tutulur.
-- Farklı ortamda klasör değiştirmek için API env’ine `UPLOAD_DIR` verilebilir.
-
-Render notu: Bu MVP local disk kullanır. Render free/ephemeral disk yeniden deploy veya restart sonrası dosyaları kalıcı tutmayabilir. Staging demo için yeterlidir; production için Render persistent disk veya S3/R2 benzeri object storage’a geçilmelidir.
-
-Admin tarafında `/admin/tasks/[id]` ekranı transcript, audio player, fotoğraf galeri önizlemesi ve medya metadata tablosunu gösterir. Medya yoksa ekranda boş durum mesajı görünür.
-
-## API Endpointleri
-
-Public:
-
+- `GET /health`
 - `GET /public/qr/:token`
 - `POST /public/requests`
+- Nuxt public QR sayfasi: `/q/[token]`
+- Login sayfasi: `/login`
 
-Staff/Admin:
+JWT gerektiren route'lar:
 
+- `GET /auth/me`
 - `GET /tasks`
 - `GET /tasks/:id`
 - `PATCH /tasks/:id/start`
 - `PATCH /tasks/:id/complete`
 - `PATCH /tasks/:id/approve`
 - `PATCH /tasks/:id/reject`
-
-Admin:
-
-- `GET /locations/tree`
-- `POST /locations`
 - `GET /qr-codes`
 - `GET /qr-codes/:id`
 - `GET /qr-codes/:id/scan-logs`
 - `POST /qr-codes`
 - `PATCH /qr-codes/:id/activate`
 - `PATCH /qr-codes/:id/deactivate`
+- `GET /locations/tree`
+- `POST /locations`
+- `GET /users`
 
-## Web Sayfaları
+Role kisitlari:
 
-- `/`
-- `/q/[token]`
-- `/admin/tasks`
-- `/admin/tasks/[id]`
-- `/admin/locations`
-- `/admin/qrs`
-- `/admin/qrs/[id]`
+- `approve` ve `reject`: `ADMIN`, `SUPERVISOR`
+- `qr-codes` liste/detay/log: `ADMIN`, `SUPERVISOR`
+- `qr-codes` create/activate/deactivate: `ADMIN`
+- `locations/tree`: `ADMIN`, `SUPERVISOR`
+- `locations` create: `ADMIN`
+- `users`: `ADMIN`
 
-## Notlar
+## Auth API
 
-- Pasif veya geçersiz QR token için API `404` döner.
-- Boş talep; metin, transcript, ses veya fotoğraf yoksa `400` ile reddedilir.
-- Hatalı task state geçişleri `400` ile reddedilir.
-- Bulunamayan task için `404` döner.
-- Browser speech recognition desteklemiyorsa QR ekranı transcript üretmez ama ses kaydı almayı dener.
-- Admin/staff ekranları korumasızdır; staging/demo dışında kullanılmamalıdır.
+### POST /auth/login
+
+Body:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "Admin123!"
+}
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "<jwt>",
+    "tokenType": "Bearer",
+    "expiresIn": "1d",
+    "user": {
+      "id": "...",
+      "email": "admin@example.com",
+      "fullName": "Demo Admin",
+      "role": "ADMIN",
+      "isActive": true,
+      "createdAt": "2026-04-21T00:00:00.000Z",
+      "updatedAt": "2026-04-21T00:00:00.000Z"
+    }
+  }
+}
+```
+
+### GET /auth/me
+
+`Authorization: Bearer <jwt>` ile current user doner.
+
+## Prisma
+
+Yeni eklenen auth verisi:
+
+- `Role` enum
+- `User` modeli
+  - `id`
+  - `email`
+  - `passwordHash`
+  - `fullName`
+  - `role`
+  - `isActive`
+  - `createdAt`
+  - `updatedAt`
+
+Migration:
+
+- `apps/api/prisma/migrations/20260421000000_auth_users`
+
+## Demo kullanicilar
+
+Seed ile uretilir:
+
+- `admin@example.com / Admin123!`
+- `supervisor@example.com / Admin123!`
+- `staff@example.com / Admin123!`
+
+## Lokal kurulum
+
+Windows PowerShell `pnpm.ps1` policy sorunu varsa `pnpm` yerine `pnpm.cmd` kullan.
+
+```bash
+pnpm install
+cp .env.example .env
+```
+
+PowerShell:
+
+```powershell
+pnpm.cmd install
+Copy-Item .env.example .env
+```
+
+Gerekli env'ler:
+
+```text
+DATABASE_URL=postgresql://workflow:workflow@localhost:5432/workflow?schema=public
+API_PORT=3001
+NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
+JWT_SECRET=change-me-for-production
+JWT_EXPIRES_IN=1d
+```
+
+## Veritabani ve seed
+
+Docker ile local PostgreSQL kaldirmak icin:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml up -d
+```
+
+Sonra:
+
+```bash
+pnpm prisma:migrate:deploy
+pnpm prisma:seed
+```
+
+## Calistirma
+
+Tum workspace:
+
+```bash
+pnpm dev
+```
+
+Ayrik:
+
+```bash
+pnpm dev:api
+pnpm dev:web
+```
+
+Adresler:
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:3001`
+- Health: `http://localhost:3001/health`
+
+## Web auth davranisi
+
+- `/login` sayfasi eklendi
+- access token cookie'de tutulur
+- refresh sonrasi auth state `/auth/me` ile geri yuklenir
+- `/admin/tasks`, `/admin/tasks/[id]`, `/admin/qrs`, `/admin/qrs/[id]`, `/admin/locations` middleware ile korunur
+- login yoksa `/login` sayfasina yonlendirilir
+- `STAFF` kullanicisi approve/reject butonlarini gormez
+- `SUPERVISOR` ve `ADMIN` gorur
+- QR aktivasyon aksiyonlari sadece `ADMIN` icin gorunur
+
+## Build
+
+```bash
+pnpm build
+```
+
+## Hizli test
+
+1. `pnpm prisma:migrate:deploy`
+2. `pnpm prisma:seed`
+3. `pnpm dev`
+4. `http://localhost:3000/q/room-401-demo-token` adresinden public request olustur
+5. `http://localhost:3000/login` adresinden `staff@example.com / Admin123!` ile giris yap
+6. `/admin/tasks` sayfasinda task'i gor ve `Baslat` / `Tamamla` akisini dene
+7. `supervisor@example.com / Admin123!` ile giris yapip ayni task icin `Onayla` / `Reddet` dene
+8. `admin@example.com / Admin123!` ile giris yapip `/admin/qrs` ve `/admin/locations` ekranlarini test et
+
+## Dogrulanan durumlar
+
+Bu degisiklikten sonra lokal olarak dogrulananlar:
+
+- workspace build basarili
+- migration deploy basarili
+- seed basarili
+- `GET /health` auth istemiyor
+- `GET /public/qr/:token` auth istemiyor
+- `GET /tasks` token olmadan `401`
+- `POST /auth/login` calisiyor
+- `GET /auth/me` calisiyor
+- `STAFF` kullanicisi `PATCH /tasks/:id/approve` cagriginda `403`

@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { Role } from '@lbrtw/shared';
+
+definePageMeta({
+  middleware: 'admin-auth',
+  roles: [Role.ADMIN, Role.SUPERVISOR]
+});
+
 interface QrCodeDetail {
   id: string;
   token: string;
@@ -35,12 +42,14 @@ interface QrScanLog {
   } | null;
 }
 
+const auth = useAuth();
 const route = useRoute();
 const id = computed(() => String(route.params.id ?? ''));
 const actionLoading = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const imageFailed = ref(false);
+const canManageQr = computed(() => auth.hasRole(Role.ADMIN));
 
 const {
   data: qrData,
@@ -84,11 +93,11 @@ async function setActiveState(action: 'activate' | 'deactivate') {
       method: 'PATCH'
     });
 
-    actionMessage.value = action === 'activate' ? 'QR aktif edildi.' : 'QR pasife alındı.';
+    actionMessage.value = action === 'activate' ? 'QR aktif edildi.' : 'QR pasife alindi.';
     await refreshQr();
     await refreshLogs();
-  } catch (err) {
-    actionError.value = err instanceof Error ? err.message : 'QR durumu güncellenemedi.';
+  } catch (error) {
+    actionError.value = getApiErrorMessage(error, 'QR durumu guncellenemedi.');
   } finally {
     actionLoading.value = '';
   }
@@ -99,24 +108,28 @@ async function setActiveState(action: 'activate' | 'deactivate') {
   <section class="section">
     <div class="page-heading">
       <div>
-        <p class="eyebrow">QR detayı</p>
+        <p class="eyebrow">QR detayi</p>
         <h1>{{ qr?.label ?? 'QR' }}</h1>
       </div>
-      <NuxtLink class="button" to="/admin/qrs">QR listesine dön</NuxtLink>
+      <NuxtLink class="button" to="/admin/qrs">QR listesine don</NuxtLink>
     </div>
 
     <div v-if="qrPending" class="panel">
-      <p>QR detayı yükleniyor...</p>
+      <p>QR detayi yukleniyor...</p>
     </div>
 
     <div v-else-if="qrError" class="panel error-panel">
-      <p>QR kodu bulunamadı.</p>
+      <p>QR kodu bulunamadi.</p>
     </div>
 
     <div v-else-if="qr" class="detail-grid">
       <section class="panel">
         <p class="eyebrow">Metadata</p>
-        <h2><span class="qr-token" :class="{ inactive: !qr.isActive }">{{ qr.isActive ? 'Aktif' : 'Pasif' }}</span></h2>
+        <h2>
+          <span class="qr-token" :class="{ inactive: !qr.isActive }">
+            {{ qr.isActive ? 'Aktif' : 'Pasif' }}
+          </span>
+        </h2>
         <dl class="definition-list">
           <div>
             <dt>Token</dt>
@@ -127,23 +140,23 @@ async function setActiveState(action: 'activate' | 'deactivate') {
             <dd>{{ qr.location.name }} · {{ qr.location.code }}</dd>
           </div>
           <div>
-            <dt>Kullanım sayısı</dt>
+            <dt>Kullanim sayisi</dt>
             <dd>{{ qr.scanCount }}</dd>
           </div>
           <div>
-            <dt>Son kullanım</dt>
+            <dt>Son kullanim</dt>
             <dd>{{ formatDate(qr.lastScannedAt) }}</dd>
           </div>
           <div>
-            <dt>Oluşturuldu</dt>
+            <dt>Olusturuldu</dt>
             <dd>{{ formatDate(qr.createdAt) }}</dd>
           </div>
           <div>
-            <dt>Güncellendi</dt>
+            <dt>Guncellendi</dt>
             <dd>{{ formatDate(qr.updatedAt) }}</dd>
           </div>
           <div>
-            <dt>Pasife alınma</dt>
+            <dt>Pasife alinma</dt>
             <dd>{{ formatDate(qr.deactivatedAt) }}</dd>
           </div>
           <div>
@@ -152,7 +165,7 @@ async function setActiveState(action: 'activate' | 'deactivate') {
           </div>
         </dl>
 
-        <div class="button-row qr-action-row">
+        <div v-if="canManageQr" class="button-row qr-action-row">
           <button
             class="button approve"
             type="button"
@@ -167,7 +180,7 @@ async function setActiveState(action: 'activate' | 'deactivate') {
             :disabled="!qr.isActive || Boolean(actionLoading)"
             @click="setActiveState('deactivate')"
           >
-            {{ actionLoading === 'deactivate' ? 'Pasife alınıyor...' : 'Pasife al' }}
+            {{ actionLoading === 'deactivate' ? 'Pasife aliniyor...' : 'Pasife al' }}
           </button>
         </div>
 
@@ -176,16 +189,16 @@ async function setActiveState(action: 'activate' | 'deactivate') {
       </section>
 
       <section class="panel">
-        <p class="eyebrow">Görsel</p>
+        <p class="eyebrow">Gorsel</p>
         <h2>QR asset</h2>
         <p v-if="qr.imagePath">
           <a :href="qr.imagePath" target="_blank" rel="noreferrer">{{ qr.imagePath }}</a>
         </p>
         <div v-if="qr.imagePath && !imageFailed" class="qr-preview-frame">
-          <img :src="qr.imagePath" alt="QR görsel önizleme" @error="imageFailed = true" />
+          <img :src="qr.imagePath" alt="QR gorsel onizleme" @error="imageFailed = true" />
         </div>
         <p v-else class="muted">
-          {{ qr.imagePath ? 'Görsel dosyası henüz public klasöre eklenmemiş.' : 'Görsel yolu tanımlı değil.' }}
+          {{ qr.imagePath ? 'Gorsel dosyasi henuz public klasore eklenmemis.' : 'Gorsel yolu tanimli degil.' }}
         </p>
       </section>
 
@@ -193,16 +206,16 @@ async function setActiveState(action: 'activate' | 'deactivate') {
         <div class="page-heading">
           <div>
             <p class="eyebrow">Scan log</p>
-            <h2>Okutulma geçmişi</h2>
+            <h2>Okutulma gecmisi</h2>
           </div>
-          <button class="button" type="button" @click="refreshLogs">Logları yenile</button>
+          <button class="button" type="button" @click="refreshLogs">Loglari yenile</button>
         </div>
 
         <div v-if="logsPending">
-          <p>Loglar yükleniyor...</p>
+          <p>Loglar yukleniyor...</p>
         </div>
         <div v-else-if="logsError" class="error-panel panel">
-          <p>Loglar alınamadı.</p>
+          <p>Loglar alinamadi.</p>
         </div>
         <div v-else class="table-wrap">
           <table>
@@ -230,7 +243,7 @@ async function setActiveState(action: 'activate' | 'deactivate') {
                 <td>{{ log.errorMessage ?? '-' }}</td>
               </tr>
               <tr v-if="logs.length === 0">
-                <td colspan="8">Henüz okutulma logu yok.</td>
+                <td colspan="8">Henuz okutulma logu yok.</td>
               </tr>
             </tbody>
           </table>

@@ -38,6 +38,14 @@ textarea {
   padding: 16px 24px;
 }
 
+.topbar-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
 .brand {
   color: #0f766e;
   font-weight: 800;
@@ -59,6 +67,28 @@ textarea {
 
 .nav-links a:hover {
   border-color: #0f766e;
+}
+
+.auth-meta {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.auth-meta strong {
+  display: block;
+}
+
+.auth-chip {
+  background: #e7f5f3;
+  border: 1px solid #91c8c1;
+  border-radius: 999px;
+  color: #0f766e;
+  display: inline-flex;
+  font-size: 0.78rem;
+  font-weight: 800;
+  margin-top: 4px;
+  padding: 4px 8px;
 }
 
 .page {
@@ -120,6 +150,10 @@ h2 {
   border: 1px solid #d8dddd;
   border-radius: 8px;
   padding: 20px;
+}
+
+.auth-card {
+  gap: 24px;
 }
 
 .error-panel {
@@ -442,5 +476,11 @@ th {
 
   .qr-token-list {
     justify-content: flex-start;
+  }
+
+  .topbar-actions,
+  .auth-meta {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

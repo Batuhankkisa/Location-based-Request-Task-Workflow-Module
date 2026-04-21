@@ -1,6 +1,8 @@
-import { PrismaClient, LocationType } from '@prisma/client';
+import { hash } from 'bcryptjs';
+import { LocationType, PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
+const demoPassword = 'Admin123!';
 
 type LocationSeed = {
   code: string;
@@ -19,7 +21,7 @@ type RoomSeed = {
 
 const hospital = {
   code: 'HOSPITAL_A',
-  name: 'Özel Hastane A'
+  name: 'Ozel Hastane A'
 };
 
 const floorNumbers = [1, 2, 3, 4];
@@ -47,6 +49,24 @@ const rooms: RoomSeed[] = [
     legacyCodes: ['HOSPITAL_A_FLOOR_3_ROOM_402']
   }
 ];
+
+const demoUsers = [
+  {
+    email: 'admin@example.com',
+    fullName: 'Demo Admin',
+    role: Role.ADMIN
+  },
+  {
+    email: 'supervisor@example.com',
+    fullName: 'Demo Supervisor',
+    role: Role.SUPERVISOR
+  },
+  {
+    email: 'staff@example.com',
+    fullName: 'Demo Staff',
+    role: Role.STAFF
+  }
+] as const;
 
 function floorCode(floor: number) {
   return `${hospital.code}_FLOOR_${floor}`;
@@ -97,7 +117,7 @@ async function upsertQrCode(input: { label: string; locationId: string; token: s
       isActive: true,
       deactivatedAt: null,
       locationId: input.locationId,
-      note: 'Demo hastane QR kaydı'
+      note: 'Demo hastane QR kaydi'
     },
     create: {
       token: input.token,
@@ -105,12 +125,37 @@ async function upsertQrCode(input: { label: string; locationId: string; token: s
       label: input.label,
       isActive: true,
       locationId: input.locationId,
-      note: 'Demo hastane QR kaydı'
+      note: 'Demo hastane QR kaydi'
     }
   });
 }
 
+async function upsertDemoUsers() {
+  const passwordHash = await hash(demoPassword, 10);
+
+  for (const user of demoUsers) {
+    await prisma.user.upsert({
+      where: { email: user.email },
+      update: {
+        fullName: user.fullName,
+        isActive: true,
+        passwordHash,
+        role: user.role
+      },
+      create: {
+        email: user.email,
+        fullName: user.fullName,
+        isActive: true,
+        passwordHash,
+        role: user.role
+      }
+    });
+  }
+}
+
 async function main() {
+  await upsertDemoUsers();
+
   const root = await upsertLocation({
     code: hospital.code,
     name: hospital.name,
@@ -161,10 +206,14 @@ async function main() {
     });
   }
 
-  console.log(`${hospital.name} seed completed: ${summary.length} oda QR kaydı hazır.`);
-  console.log('Test URL örnekleri:');
+  console.log(`${hospital.name} seed completed: ${summary.length} room QR records ready.`);
+  console.log('Demo users:');
+  for (const user of demoUsers) {
+    console.log(`- ${user.email} / ${demoPassword} (${user.role})`);
+  }
+  console.log('Test URLs:');
   for (const item of summary) {
-    console.log(`- ${item.floor}. Kat / ${item.room} No'lu Oda: http://localhost:3000/q/${item.token}`);
+    console.log(`- Floor ${item.floor} / Room ${item.room}: http://localhost:3000/q/${item.token}`);
   }
 }
 

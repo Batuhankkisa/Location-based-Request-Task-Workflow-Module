@@ -6,6 +6,12 @@ export enum TaskStatus {
   REJECTED = 'REJECTED'
 }
 
+export enum Role {
+  ADMIN = 'ADMIN',
+  SUPERVISOR = 'SUPERVISOR',
+  STAFF = 'STAFF'
+}
+
 export enum LocationType {
   ORGANIZATION = 'ORGANIZATION',
   FLOOR = 'FLOOR',

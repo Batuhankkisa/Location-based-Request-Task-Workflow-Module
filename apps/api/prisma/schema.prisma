@@ -39,6 +39,26 @@ enum RequestMediaType {
   AUDIO
 }
 
+enum Role {
+  ADMIN
+  SUPERVISOR
+  STAFF
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([role])
+  @@index([isActive])
+}
+
 model Location {
   id              String           @id @default(cuid())
   name            String

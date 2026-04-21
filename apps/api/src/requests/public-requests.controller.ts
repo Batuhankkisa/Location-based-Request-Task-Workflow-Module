@@ -1,5 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Param, Post, Req, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { Public } from '../auth/public.decorator';
 import { CreateVisitorRequestDto } from './dto/create-visitor-request.dto';
 import {
   MAX_IMAGE_UPLOADS,
@@ -47,6 +48,7 @@ function requestMediaFileFilter(
   callback(new BadRequestException('Desteklenmeyen upload alanı veya dosya tipi'), false);
 }
 
+@Public()
 @Controller('public')
 export class PublicRequestsController {
   constructor(private readonly requestsService: RequestsService) {}

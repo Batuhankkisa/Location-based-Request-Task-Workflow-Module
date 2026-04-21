@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { TaskStatus } from '@lbrtw/shared';
 import { Prisma, TaskStatus as PrismaTaskStatus } from '@prisma/client';
 import { ApprovalsService } from '../approvals/approvals.service';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransitionTaskDto } from './dto/transition-task.dto';
 
@@ -52,9 +53,9 @@ export class TasksService {
     return task;
   }
 
-  start(id: string, dto: TransitionTaskDto) {
-    const actor = this.clean(dto.changedBy) ?? 'staff';
-    const assignedTo = this.clean(dto.assignedTo) ?? actor;
+  start(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
+    const actor = this.actorLabel(user);
+    const assignedTo = actor;
 
     return this.transitionTask(id, TaskStatus.NEW, TaskStatus.IN_PROGRESS, {
       changedBy: actor,
@@ -63,8 +64,8 @@ export class TasksService {
     });
   }
 
-  complete(id: string, dto: TransitionTaskDto) {
-    const actor = this.clean(dto.changedBy) ?? 'staff';
+  complete(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
+    const actor = this.actorLabel(user);
 
     return this.transitionTask(id, TaskStatus.IN_PROGRESS, TaskStatus.DONE_WAITING_APPROVAL, {
       changedBy: actor,
@@ -76,8 +77,8 @@ export class TasksService {
     });
   }
 
-  approve(id: string, dto: TransitionTaskDto) {
-    const actor = this.clean(dto.changedBy) ?? 'supervisor';
+  approve(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
+    const actor = this.actorLabel(user);
 
     return this.transitionTask(id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.APPROVED, {
       changedBy: actor,
@@ -89,8 +90,8 @@ export class TasksService {
     });
   }
 
-  reject(id: string, dto: TransitionTaskDto) {
-    const actor = this.clean(dto.changedBy) ?? 'supervisor';
+  reject(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
+    const actor = this.actorLabel(user);
 
     return this.transitionTask(id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.REJECTED, {
       changedBy: actor,
@@ -155,5 +156,9 @@ export class TasksService {
   private clean(value?: string): string | undefined {
     const cleanValue = value?.trim();
     return cleanValue ? cleanValue : undefined;
+  }
+
+  private actorLabel(user: AuthenticatedUser) {
+    return this.clean(user.fullName) ?? user.email;
   }
 }

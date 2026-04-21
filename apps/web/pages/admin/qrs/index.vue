@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { Role } from '@lbrtw/shared';
+
+definePageMeta({
+  middleware: 'admin-auth',
+  roles: [Role.ADMIN, Role.SUPERVISOR]
+});
+
 interface QrCodeListItem {
   id: string;
   token: string;
@@ -41,17 +48,17 @@ function formatDate(value?: string | null) {
     <div class="page-heading">
       <div>
         <p class="eyebrow">Admin</p>
-        <h1>QR kodları</h1>
+        <h1>QR kodlari</h1>
       </div>
       <button class="button" type="button" @click="refresh">Yenile</button>
     </div>
 
     <div v-if="pending" class="panel">
-      <p>QR kodları yükleniyor...</p>
+      <p>QR kodlari yukleniyor...</p>
     </div>
 
     <div v-else-if="error" class="panel error-panel">
-      <p>QR kodları alınamadı.</p>
+      <p>QR kodlari alinamadi.</p>
     </div>
 
     <div v-else class="table-wrap">
@@ -61,10 +68,10 @@ function formatDate(value?: string | null) {
             <th>Lokasyon</th>
             <th>Token</th>
             <th>Durum</th>
-            <th>Kullanım</th>
-            <th>Son kullanım</th>
-            <th>Oluşturuldu</th>
-            <th>Görsel</th>
+            <th>Kullanim</th>
+            <th>Son kullanim</th>
+            <th>Olusturuldu</th>
+            <th>Gorsel</th>
             <th>Aksiyon</th>
           </tr>
         </thead>
@@ -95,7 +102,7 @@ function formatDate(value?: string | null) {
             </td>
           </tr>
           <tr v-if="qrCodes.length === 0">
-            <td colspan="8">Henüz QR kodu yok.</td>
+            <td colspan="8">Henuz QR kodu yok.</td>
           </tr>
         </tbody>
       </table>

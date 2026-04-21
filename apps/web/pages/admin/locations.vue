@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import { Role } from '@lbrtw/shared';
+
+definePageMeta({
+  middleware: 'admin-auth',
+  roles: [Role.ADMIN, Role.SUPERVISOR]
+});
+
 interface QrCodeSummary {
   id: string;
   token: string;
@@ -33,16 +40,16 @@ const locations = computed(() => data.value?.data ?? []);
     </div>
 
     <div v-if="pending" class="panel">
-      <p>Lokasyonlar yükleniyor...</p>
+      <p>Lokasyonlar yukleniyor...</p>
     </div>
 
     <div v-else-if="error" class="panel error-panel">
-      <p>Lokasyon ağacı alınamadı.</p>
+      <p>Lokasyon agaci alinamadi.</p>
     </div>
 
     <div v-else class="panel">
       <LocationTree v-if="locations.length" :nodes="locations" />
-      <p v-else>Henüz lokasyon yok.</p>
+      <p v-else>Henuz lokasyon yok.</p>
     </div>
   </section>
 </template>
