@@ -1,0 +1,61 @@
+import { QrScanStatus, Role, TaskStatus } from '@lbrtw/shared';
+
+export type StatusTone = 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+
+const envApiBaseUrl =
+  (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+    ?.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+
+export const API_BASE_URL = envApiBaseUrl.trim().replace(/\/$/, '');
+
+export const AUTH_TOKEN_KEY = 'lbrtw.mobile.access_token';
+
+export const COLORS = {
+  background: '#f3f5fb',
+  surface: '#ffffff',
+  surfaceMuted: '#edf2ff',
+  text: '#0f172a',
+  textMuted: '#667085',
+  heading: '#13213d',
+  border: '#dce3f4',
+  primary: '#101828',
+  primarySoft: '#dce4ff',
+  success: '#1f8f4d',
+  successSoft: '#e6f7ed',
+  warning: '#e58a00',
+  warningSoft: '#fff2da',
+  danger: '#cf3345',
+  dangerSoft: '#ffe9ec',
+  info: '#315efb',
+  infoSoft: '#e8eeff',
+  shadow: 'rgba(16, 24, 40, 0.08)'
+} as const;
+
+export const LAYOUT = {
+  screenPadding: 20,
+  sectionGap: 18,
+  cardRadius: 24,
+  controlRadius: 18
+} as const;
+
+export const ROLE_LABELS: Record<Role, string> = {
+  [Role.ADMIN]: 'Admin',
+  [Role.SUPERVISOR]: 'Supervisor',
+  [Role.STAFF]: 'Staff'
+};
+
+export const TASK_STATUS_META: Record<TaskStatus, { label: string; tone: StatusTone }> = {
+  [TaskStatus.NEW]: { label: 'Yeni', tone: 'info' },
+  [TaskStatus.IN_PROGRESS]: { label: 'Islemde', tone: 'warning' },
+  [TaskStatus.DONE_WAITING_APPROVAL]: { label: 'Onay Bekliyor', tone: 'neutral' },
+  [TaskStatus.APPROVED]: { label: 'Onaylandi', tone: 'success' },
+  [TaskStatus.REJECTED]: { label: 'Reddedildi', tone: 'danger' }
+};
+
+export const QR_SCAN_STATUS_META: Record<QrScanStatus, { label: string; tone: StatusTone }> = {
+  [QrScanStatus.RESOLVED]: { label: 'Cozuldu', tone: 'success' },
+  [QrScanStatus.INACTIVE]: { label: 'Pasif', tone: 'warning' },
+  [QrScanStatus.TOKEN_NOT_FOUND]: { label: 'Bulunamadi', tone: 'danger' },
+  [QrScanStatus.REQUEST_CREATED]: { label: 'Talep Olustu', tone: 'info' },
+  [QrScanStatus.REQUEST_FAILED]: { label: 'Talep Hatasi', tone: 'danger' }
+};

@@ -10,3 +10,7 @@ dist/
 coverage/
 *.log
 desktop.ini
+.expo/
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/.expo-start.*
