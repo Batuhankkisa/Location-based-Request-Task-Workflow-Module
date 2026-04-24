@@ -12,6 +12,14 @@ export enum Role {
   STAFF = 'STAFF'
 }
 
+export enum OrganizationType {
+  HOSPITAL = 'HOSPITAL',
+  CLINIC = 'CLINIC',
+  HOTEL = 'HOTEL',
+  RESTAURANT = 'RESTAURANT',
+  GENERAL = 'GENERAL'
+}
+
 export enum LocationType {
   ORGANIZATION = 'ORGANIZATION',
   FLOOR = 'FLOOR',

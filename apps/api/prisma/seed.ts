@@ -1,10 +1,11 @@
 import { hash } from 'bcryptjs';
-import { LocationType, PrismaClient, Role } from '@prisma/client';
+import { LocationType, OrganizationType, PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 const demoPassword = 'Admin123!';
 
 type LocationSeed = {
+  organizationId: string;
   code: string;
   legacyCodes?: string[];
   name: string;
@@ -19,34 +20,57 @@ type RoomSeed = {
   legacyCodes?: string[];
 };
 
-const hospital = {
-  code: 'HOSPITAL_A',
-  name: 'Ozel Hastane A'
+type OrganizationSeed = {
+  code: string;
+  name: string;
+  type: OrganizationType;
+  floors: number[];
+  rooms: RoomSeed[];
 };
 
-const floorNumbers = [1, 2, 3, 4];
-
-const rooms: RoomSeed[] = [
-  { floor: 1, room: '101', token: 'hsp-a-f1-r101-demo' },
-  { floor: 1, room: '102', token: 'hsp-a-f1-r102-demo' },
-  { floor: 1, room: '103', token: 'hsp-a-f1-r103-demo' },
-  { floor: 2, room: '201', token: 'hsp-a-f2-r201-demo' },
-  { floor: 2, room: '202', token: 'hsp-a-f2-r202-demo' },
-  { floor: 2, room: '203', token: 'hsp-a-f2-r203-demo' },
-  { floor: 3, room: '301', token: 'hsp-a-f3-r301-demo' },
-  { floor: 3, room: '302', token: 'hsp-a-f3-r302-demo' },
-  { floor: 3, room: '303', token: 'hsp-a-f3-r303-demo' },
+const organizations: OrganizationSeed[] = [
   {
-    floor: 4,
-    room: '401',
-    token: 'room-401-demo-token',
-    legacyCodes: ['HOSPITAL_A_FLOOR_3_ROOM_401']
+    code: 'HOSPITAL_A',
+    name: 'Ozel Hastane A',
+    type: OrganizationType.HOSPITAL,
+    floors: [1, 2, 3, 4],
+    rooms: [
+      { floor: 1, room: '101', token: 'hsp-a-f1-r101-demo' },
+      { floor: 1, room: '102', token: 'hsp-a-f1-r102-demo' },
+      { floor: 1, room: '103', token: 'hsp-a-f1-r103-demo' },
+      { floor: 2, room: '201', token: 'hsp-a-f2-r201-demo' },
+      { floor: 2, room: '202', token: 'hsp-a-f2-r202-demo' },
+      { floor: 2, room: '203', token: 'hsp-a-f2-r203-demo' },
+      { floor: 3, room: '301', token: 'hsp-a-f3-r301-demo' },
+      { floor: 3, room: '302', token: 'hsp-a-f3-r302-demo' },
+      { floor: 3, room: '303', token: 'hsp-a-f3-r303-demo' },
+      {
+        floor: 4,
+        room: '401',
+        token: 'room-401-demo-token',
+        legacyCodes: ['HOSPITAL_A_FLOOR_3_ROOM_401']
+      },
+      {
+        floor: 4,
+        room: '402',
+        token: 'room-402-demo-token',
+        legacyCodes: ['HOSPITAL_A_FLOOR_3_ROOM_402']
+      }
+    ]
   },
   {
-    floor: 4,
-    room: '402',
-    token: 'room-402-demo-token',
-    legacyCodes: ['HOSPITAL_A_FLOOR_3_ROOM_402']
+    code: 'HOSPITAL_B',
+    name: 'Ozel Hastane B',
+    type: OrganizationType.HOSPITAL,
+    floors: [1, 2, 3],
+    rooms: [
+      { floor: 1, room: '101', token: 'hsp-b-f1-r101-demo' },
+      { floor: 1, room: '102', token: 'hsp-b-f1-r102-demo' },
+      { floor: 2, room: '201', token: 'hsp-b-f2-r201-demo' },
+      { floor: 2, room: '202', token: 'hsp-b-f2-r202-demo' },
+      { floor: 3, room: '301', token: 'hsp-b-f3-r301-demo' },
+      { floor: 3, room: '302', token: 'hsp-b-f3-r302-demo' }
+    ]
   }
 ];
 
@@ -54,32 +78,65 @@ const demoUsers = [
   {
     email: 'admin@example.com',
     fullName: 'Demo Admin',
-    role: Role.ADMIN
+    role: Role.ADMIN,
+    organizationCode: null
   },
   {
-    email: 'supervisor@example.com',
-    fullName: 'Demo Supervisor',
-    role: Role.SUPERVISOR
+    email: 'supervisor.a@example.com',
+    fullName: 'Hastane A Supervisor',
+    role: Role.SUPERVISOR,
+    organizationCode: 'HOSPITAL_A'
   },
   {
-    email: 'staff@example.com',
-    fullName: 'Demo Staff',
-    role: Role.STAFF
+    email: 'staff.a@example.com',
+    fullName: 'Hastane A Staff',
+    role: Role.STAFF,
+    organizationCode: 'HOSPITAL_A'
+  },
+  {
+    email: 'supervisor.b@example.com',
+    fullName: 'Hastane B Supervisor',
+    role: Role.SUPERVISOR,
+    organizationCode: 'HOSPITAL_B'
+  },
+  {
+    email: 'staff.b@example.com',
+    fullName: 'Hastane B Staff',
+    role: Role.STAFF,
+    organizationCode: 'HOSPITAL_B'
   }
 ] as const;
 
-function floorCode(floor: number) {
-  return `${hospital.code}_FLOOR_${floor}`;
+function floorCode(organizationCode: string, floor: number) {
+  return `${organizationCode}_FLOOR_${floor}`;
 }
 
-function roomCode(floor: number, room: string) {
-  return `${floorCode(floor)}_ROOM_${room}`;
+function roomCode(organizationCode: string, floor: number, room: string) {
+  return `${floorCode(organizationCode, floor)}_ROOM_${room}`;
+}
+
+async function upsertOrganization(seed: OrganizationSeed) {
+  return prisma.organization.upsert({
+    where: { code: seed.code },
+    update: {
+      name: seed.name,
+      type: seed.type,
+      isActive: true
+    },
+    create: {
+      code: seed.code,
+      name: seed.name,
+      type: seed.type,
+      isActive: true
+    }
+  });
 }
 
 async function upsertLocation(seed: LocationSeed) {
   const codes = [seed.code, ...(seed.legacyCodes ?? [])];
   const existing = await prisma.location.findFirst({
     where: {
+      organizationId: seed.organizationId,
       code: {
         in: codes
       }
@@ -90,6 +147,7 @@ async function upsertLocation(seed: LocationSeed) {
     return prisma.location.update({
       where: { id: existing.id },
       data: {
+        organizationId: seed.organizationId,
         code: seed.code,
         name: seed.name,
         parentId: seed.parentId,
@@ -100,6 +158,7 @@ async function upsertLocation(seed: LocationSeed) {
 
   return prisma.location.create({
     data: {
+      organizationId: seed.organizationId,
       code: seed.code,
       name: seed.name,
       parentId: seed.parentId,
@@ -108,7 +167,22 @@ async function upsertLocation(seed: LocationSeed) {
   });
 }
 
-async function upsertQrCode(input: { label: string; locationId: string; token: string }) {
+async function upsertRootLocation(organization: { id: string; code: string; name: string }) {
+  return upsertLocation({
+    organizationId: organization.id,
+    code: organization.code,
+    name: organization.name,
+    parentId: null,
+    type: LocationType.ORGANIZATION
+  });
+}
+
+async function upsertQrCode(input: {
+  label: string;
+  locationId: string;
+  token: string;
+  note: string;
+}) {
   return prisma.qrCode.upsert({
     where: { token: input.token },
     update: {
@@ -117,7 +191,7 @@ async function upsertQrCode(input: { label: string; locationId: string; token: s
       isActive: true,
       deactivatedAt: null,
       locationId: input.locationId,
-      note: 'Demo hastane QR kaydi'
+      note: input.note
     },
     create: {
       token: input.token,
@@ -125,51 +199,79 @@ async function upsertQrCode(input: { label: string; locationId: string; token: s
       label: input.label,
       isActive: true,
       locationId: input.locationId,
-      note: 'Demo hastane QR kaydi'
+      note: input.note
     }
   });
 }
 
-async function upsertDemoUsers() {
+async function renameLegacyUsersIfNeeded() {
+  const legacyToScoped = [
+    ['supervisor@example.com', 'supervisor.a@example.com'],
+    ['staff@example.com', 'staff.a@example.com']
+  ] as const;
+
+  for (const [legacyEmail, scopedEmail] of legacyToScoped) {
+    const scopedUser = await prisma.user.findUnique({ where: { email: scopedEmail } });
+    if (scopedUser) {
+      continue;
+    }
+
+    const legacyUser = await prisma.user.findUnique({ where: { email: legacyEmail } });
+    if (!legacyUser) {
+      continue;
+    }
+
+    await prisma.user.update({
+      where: { email: legacyEmail },
+      data: {
+        email: scopedEmail
+      }
+    });
+  }
+}
+
+async function upsertDemoUsers(organizationByCode: Map<string, { id: string; name: string }>) {
   const passwordHash = await hash(demoPassword, 10);
 
+  await renameLegacyUsersIfNeeded();
+
   for (const user of demoUsers) {
+    const organizationId = user.organizationCode
+      ? organizationByCode.get(user.organizationCode)?.id ?? null
+      : null;
+
     await prisma.user.upsert({
       where: { email: user.email },
       update: {
         fullName: user.fullName,
         isActive: true,
         passwordHash,
-        role: user.role
+        role: user.role,
+        organizationId
       },
       create: {
         email: user.email,
         fullName: user.fullName,
         isActive: true,
         passwordHash,
-        role: user.role
+        role: user.role,
+        organizationId
       }
     });
   }
 }
 
-async function main() {
-  await upsertDemoUsers();
-
-  const root = await upsertLocation({
-    code: hospital.code,
-    name: hospital.name,
-    parentId: null,
-    type: LocationType.ORGANIZATION
-  });
-
+async function seedOrganization(organizationSeed: OrganizationSeed) {
+  const organization = await upsertOrganization(organizationSeed);
+  const rootLocation = await upsertRootLocation(organization);
   const floors = new Map<number, { id: string }>();
 
-  for (const floor of floorNumbers) {
+  for (const floor of organizationSeed.floors) {
     const location = await upsertLocation({
-      code: floorCode(floor),
+      organizationId: organization.id,
+      code: floorCode(organizationSeed.code, floor),
       name: `${floor}. Kat`,
-      parentId: root.id,
+      parentId: rootLocation.id,
       type: LocationType.FLOOR
     });
 
@@ -178,15 +280,15 @@ async function main() {
 
   const summary: Array<{ floor: number; room: string; token: string }> = [];
 
-  for (const item of rooms) {
+  for (const item of organizationSeed.rooms) {
     const floor = floors.get(item.floor);
-
     if (!floor) {
-      throw new Error(`Floor ${item.floor} is not defined in seed data`);
+      throw new Error(`Floor ${item.floor} is not defined for ${organizationSeed.code}`);
     }
 
     const room = await upsertLocation({
-      code: roomCode(item.floor, item.room),
+      organizationId: organization.id,
+      code: roomCode(organizationSeed.code, item.floor, item.room),
       legacyCodes: item.legacyCodes,
       name: `${item.room} No'lu Oda`,
       parentId: floor.id,
@@ -195,8 +297,9 @@ async function main() {
 
     await upsertQrCode({
       token: item.token,
-      label: `QR - ${item.room} No'lu Oda`,
-      locationId: room.id
+      label: `${organizationSeed.name} - ${item.room} No'lu Oda`,
+      locationId: room.id,
+      note: `${organizationSeed.name} demo QR kaydi`
     });
 
     summary.push({
@@ -206,14 +309,48 @@ async function main() {
     });
   }
 
-  console.log(`${hospital.name} seed completed: ${summary.length} room QR records ready.`);
+  return {
+    organization,
+    summary
+  };
+}
+
+async function main() {
+  const organizationByCode = new Map<string, { id: string; name: string }>();
+  const summaries: Array<{
+    organizationName: string;
+    rooms: Array<{ floor: number; room: string; token: string }>;
+  }> = [];
+
+  for (const organizationSeed of organizations) {
+    const result = await seedOrganization(organizationSeed);
+    organizationByCode.set(organizationSeed.code, {
+      id: result.organization.id,
+      name: result.organization.name
+    });
+    summaries.push({
+      organizationName: result.organization.name,
+      rooms: result.summary
+    });
+  }
+
+  await upsertDemoUsers(organizationByCode);
+
+  console.log('Multi-organization demo seed completed.');
   console.log('Demo users:');
   for (const user of demoUsers) {
-    console.log(`- ${user.email} / ${demoPassword} (${user.role})`);
+    const organizationName = user.organizationCode
+      ? organizationByCode.get(user.organizationCode)?.name ?? user.organizationCode
+      : 'Global';
+    console.log(`- ${user.email} / ${demoPassword} (${user.role} - ${organizationName})`);
   }
+
   console.log('Test URLs:');
-  for (const item of summary) {
-    console.log(`- Floor ${item.floor} / Room ${item.room}: http://localhost:3000/q/${item.token}`);
+  for (const organizationSummary of summaries) {
+    console.log(`- ${organizationSummary.organizationName}`);
+    for (const item of organizationSummary.rooms) {
+      console.log(`  • Floor ${item.floor} / Room ${item.room}: http://localhost:3000/q/${item.token}`);
+    }
   }
 }
 

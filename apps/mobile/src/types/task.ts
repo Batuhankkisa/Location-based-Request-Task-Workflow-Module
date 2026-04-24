@@ -1,10 +1,25 @@
-import type { LocationType, RequestChannel, RequestMediaType, TaskStatus } from '@lbrtw/shared';
+import type {
+  LocationType,
+  OrganizationType,
+  RequestChannel,
+  RequestMediaType,
+  TaskStatus
+} from '@lbrtw/shared';
+
+export interface TaskOrganization {
+  id: string;
+  name: string;
+  code: string;
+  type: OrganizationType;
+  isActive: boolean;
+}
 
 export interface TaskLocation {
   id?: string;
   name: string;
   code: string;
   type?: LocationType;
+  organization?: TaskOrganization;
 }
 
 export interface TaskRequestSummary {

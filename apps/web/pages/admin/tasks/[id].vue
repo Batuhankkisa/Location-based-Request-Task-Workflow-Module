@@ -29,6 +29,11 @@ interface TaskDetail {
     name: string;
     code: string;
     type: string;
+    organization?: {
+      id: string;
+      name: string;
+      code: string;
+    };
   };
   request: {
     id: string;
@@ -314,6 +319,7 @@ function formatDate(value?: string | null) {
               <div>
                 <span>Konum</span>
                 <strong>{{ task.location.name }}</strong>
+                <small>{{ task.location.organization?.name ?? '-' }}</small>
               </div>
               <div>
                 <span>Kategori</span>

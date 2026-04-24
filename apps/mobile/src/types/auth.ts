@@ -1,10 +1,20 @@
-import type { Role } from '@lbrtw/shared';
+import type { OrganizationType, Role } from '@lbrtw/shared';
+
+export interface AuthOrganization {
+  id: string;
+  name: string;
+  code: string;
+  type: OrganizationType;
+  isActive: boolean;
+}
 
 export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
   role: Role;
+  organizationId: string | null;
+  organization: AuthOrganization | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

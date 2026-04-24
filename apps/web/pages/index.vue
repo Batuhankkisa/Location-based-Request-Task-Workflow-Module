@@ -7,8 +7,9 @@
     </p>
 
     <div class="quick-actions">
-      <NuxtLink class="button primary" to="/q/room-401-demo-token">401 Oda QR</NuxtLink>
-      <NuxtLink class="button" to="/q/room-402-demo-token">402 Oda QR</NuxtLink>
+      <NuxtLink class="button primary" to="/q/room-401-demo-token">Hastane A · 401</NuxtLink>
+      <NuxtLink class="button" to="/q/room-402-demo-token">Hastane A · 402</NuxtLink>
+      <NuxtLink class="button" to="/q/hsp-b-f1-r101-demo">Hastane B · 101</NuxtLink>
       <NuxtLink class="button" to="/login">Personel login</NuxtLink>
       <NuxtLink class="button" to="/admin/tasks">Task listesi</NuxtLink>
     </div>

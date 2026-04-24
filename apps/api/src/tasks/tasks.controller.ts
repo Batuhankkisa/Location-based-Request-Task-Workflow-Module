@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { Role } from '@lbrtw/shared';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
@@ -12,18 +12,21 @@ export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
 
   @Get()
-  async findAll() {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('organizationId') organizationId?: string
+  ) {
     return {
       success: true,
-      data: await this.tasksService.findAll()
+      data: await this.tasksService.findAll(user, organizationId)
     };
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
-      data: await this.tasksService.findOne(id)
+      data: await this.tasksService.findOne(id, user)
     };
   }
 

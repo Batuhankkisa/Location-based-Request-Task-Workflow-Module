@@ -1,10 +1,19 @@
-import type { LocationType, QrScanStatus } from '@lbrtw/shared';
+import type { LocationType, OrganizationType, QrScanStatus } from '@lbrtw/shared';
+
+export interface QrOrganization {
+  id: string;
+  name: string;
+  code: string;
+  type: OrganizationType;
+  isActive: boolean;
+}
 
 export interface QrLocation {
   id: string;
   name: string;
   code: string;
   type: LocationType;
+  organization?: QrOrganization;
 }
 
 export interface QrListItem {

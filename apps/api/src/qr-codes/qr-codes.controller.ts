@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@lbrtw/shared';
+import { CurrentUser } from '../auth/current-user.decorator';
+import type { AuthenticatedUser } from '../auth/auth.types';
 import { Roles } from '../auth/roles.decorator';
 import { CreateQrCodeDto } from './dto/create-qr-code.dto';
 import { QrCodesService } from './qr-codes.service';
@@ -10,53 +12,56 @@ export class QrCodesController {
   constructor(private readonly qrCodesService: QrCodesService) {}
 
   @Get()
-  async findAll() {
+  async findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('organizationId') organizationId?: string
+  ) {
     return {
       success: true,
-      data: await this.qrCodesService.findAll()
+      data: await this.qrCodesService.findAll(user, organizationId)
     };
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
-      data: await this.qrCodesService.findOne(id)
+      data: await this.qrCodesService.findOne(id, user)
     };
   }
 
   @Get(':id/scan-logs')
-  async findScanLogs(@Param('id') id: string) {
+  async findScanLogs(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
-      data: await this.qrCodesService.findScanLogs(id)
+      data: await this.qrCodesService.findScanLogs(id, user)
     };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
   @Post()
-  async create(@Body() dto: CreateQrCodeDto) {
+  async create(@Body() dto: CreateQrCodeDto, @CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
-      data: await this.qrCodesService.create(dto)
+      data: await this.qrCodesService.create(dto, user)
     };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
   @Patch(':id/activate')
-  async activate(@Param('id') id: string) {
+  async activate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
-      data: await this.qrCodesService.activate(id)
+      data: await this.qrCodesService.activate(id, user)
     };
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.SUPERVISOR)
   @Patch(':id/deactivate')
-  async deactivate(@Param('id') id: string) {
+  async deactivate(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return {
       success: true,
-      data: await this.qrCodesService.deactivate(id)
+      data: await this.qrCodesService.deactivate(id, user)
     };
   }
 }

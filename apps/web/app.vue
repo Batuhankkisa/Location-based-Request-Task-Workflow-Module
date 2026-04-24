@@ -10,6 +10,8 @@ const user = computed(() => auth.user.value);
 const isAdminRoute = computed(() => route.path.startsWith('/admin'));
 const canViewTasks = computed(() => Boolean(user.value));
 const canViewQrAdmin = computed(() => auth.hasRole(Role.ADMIN, Role.SUPERVISOR));
+const canManageOrganizations = computed(() => auth.hasRole(Role.ADMIN));
+const canManageUsers = computed(() => auth.hasRole(Role.ADMIN));
 
 const adminNavItems = computed(() =>
   [
@@ -33,6 +35,20 @@ const adminNavItems = computed(() =>
           label: 'Lokasyon Agaci',
           meta: 'Kat ve oda yapisi'
         }
+      : null,
+    canManageOrganizations.value
+      ? {
+          to: '/admin/organizations',
+          label: 'Kurumlar',
+          meta: 'Tenant yonetimi'
+        }
+      : null,
+    canManageUsers.value
+      ? {
+          to: '/admin/users',
+          label: 'Kullanicilar',
+          meta: 'Supervisor ve staff'
+        }
       : null
   ].filter((item): item is { to: string; label: string; meta: string } => Boolean(item))
 );
@@ -49,6 +65,20 @@ const pageMeta = computed(() => {
     return {
       kicker: 'Lokasyon',
       title: 'Tesis Yapisi'
+    };
+  }
+
+  if (route.path.startsWith('/admin/organizations')) {
+    return {
+      kicker: 'Kurumlar',
+      title: 'Multi-Organization'
+    };
+  }
+
+  if (route.path.startsWith('/admin/users')) {
+    return {
+      kicker: 'Kullanicilar',
+      title: 'Rol ve Kurum'
     };
   }
 
@@ -112,7 +142,7 @@ async function logout() {
           <div v-if="user" class="admin-user-card">
             <div>
               <strong>{{ user.fullName }}</strong>
-              <span>{{ user.role }}</span>
+              <span>{{ user.organization?.name ?? 'Global Admin' }} · {{ user.role }}</span>
             </div>
             <button class="button small" type="button" @click="logout">Cikis</button>
           </div>
@@ -135,7 +165,7 @@ async function logout() {
             <div v-if="user" class="admin-topbar-user">
               <div>
                 <strong>{{ user.fullName }}</strong>
-                <span>{{ user.email }}</span>
+                <span>{{ user.organization?.name ?? user.email }}</span>
               </div>
               <span class="auth-chip">{{ user.role }}</span>
             </div>

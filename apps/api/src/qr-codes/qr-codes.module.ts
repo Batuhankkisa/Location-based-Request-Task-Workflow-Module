@@ -4,6 +4,7 @@ import { QrCodesService } from './qr-codes.service';
 
 @Module({
   controllers: [QrCodesController],
-  providers: [QrCodesService]
+  providers: [QrCodesService],
+  exports: [QrCodesService]
 })
 export class QrCodesModule {}
