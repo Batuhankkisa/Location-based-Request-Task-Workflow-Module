@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { spawnSync } from 'node:child_process';
 import { config } from 'dotenv';
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -42,7 +43,25 @@ function parseCorsOrigin() {
   return origins;
 }
 
+function runDatabaseMigrations() {
+  if (process.env.NODE_ENV !== 'production') {
+    return;
+  }
+
+  const command = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
+  const result = spawnSync(command, ['prisma:migrate:deploy'], {
+    cwd: process.cwd(),
+    env: process.env,
+    stdio: 'inherit'
+  });
+
+  if (result.status !== 0) {
+    throw new Error(`Database migration failed with exit code ${result.status ?? 'unknown'}`);
+  }
+}
+
 async function bootstrap() {
+  runDatabaseMigrations();
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const uploadRoot = resolve(process.cwd(), process.env.UPLOAD_DIR || 'storage/uploads');
 
