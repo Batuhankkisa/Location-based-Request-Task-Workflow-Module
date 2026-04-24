@@ -13,7 +13,7 @@
     "build:api": "pnpm --filter @lbrtw/api build",
     "build:web": "pnpm --filter @lbrtw/web build",
     "build:mobile": "pnpm --filter @lbrtw/mobile build",
-    "start:api": "pnpm --filter @lbrtw/api start:prod",
+    "start:api": "pnpm --filter @lbrtw/api prisma:migrate:deploy && pnpm --filter @lbrtw/api start:prod",
     "start:web": "pnpm --filter @lbrtw/web start",
     "prisma:generate": "pnpm --filter @lbrtw/api prisma:generate",
     "prisma:migrate": "dotenv -e .env.example -e .env -- pnpm --filter @lbrtw/api prisma:migrate",
