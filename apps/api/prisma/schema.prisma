@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum OrganizationType {
+  HOSPITAL
+  CLINIC
+  HOTEL
+  RESTAURANT
+  GENERAL
+}
+
 enum LocationType {
   ORGANIZATION
   FLOOR
@@ -45,24 +53,44 @@ enum Role {
   STAFF
 }
 
+model Organization {
+  id        String           @id @default(cuid())
+  name      String
+  code      String           @unique
+  type      OrganizationType @default(GENERAL)
+  isActive  Boolean          @default(true)
+  users     User[]
+  locations Location[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([type])
+  @@index([isActive])
+}
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  fullName     String
-  role         Role
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String        @id @default(cuid())
+  email          String        @unique
+  passwordHash   String
+  fullName       String
+  role           Role
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@index([role])
+  @@index([organizationId])
   @@index([isActive])
 }
 
 model Location {
   id              String           @id @default(cuid())
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   name            String
-  code            String           @unique
+  code            String
   type            LocationType
   parentId        String?
   parent          Location?        @relation("LocationTree", fields: [parentId], references: [id], onDelete: SetNull)
@@ -73,7 +101,10 @@ model Location {
   qrScanLogs      QrScanLog[]      @relation("QrScanLogLocation")
   createdAt       DateTime         @default(now())
 
+  @@unique([organizationId, code])
+  @@index([organizationId])
   @@index([parentId])
+  @@index([organizationId, parentId])
 }
 
 model QrCode {

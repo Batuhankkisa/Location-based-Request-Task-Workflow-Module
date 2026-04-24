@@ -23,6 +23,11 @@ interface QrCodeDetail {
     name: string;
     code: string;
     type: string;
+    organization?: {
+      id: string;
+      name: string;
+      code: string;
+    };
   };
 }
 
@@ -49,7 +54,7 @@ const actionLoading = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const imageFailed = ref(false);
-const canManageQr = computed(() => auth.hasRole(Role.ADMIN));
+const canManageQr = computed(() => auth.hasRole(Role.ADMIN, Role.SUPERVISOR));
 
 const {
   data: qrData,
@@ -137,7 +142,10 @@ async function setActiveState(action: 'activate' | 'deactivate') {
           </div>
           <div>
             <dt>Lokasyon</dt>
-            <dd>{{ qr.location.name }} · {{ qr.location.code }}</dd>
+            <dd>
+              {{ qr.location.organization?.name ? `${qr.location.organization.name} · ` : '' }}{{ qr.location.name }}
+              · {{ qr.location.code }}
+            </dd>
           </div>
           <div>
             <dt>Kullanim sayisi</dt>

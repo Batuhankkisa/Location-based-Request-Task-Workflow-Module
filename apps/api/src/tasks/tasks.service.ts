@@ -3,12 +3,17 @@ import { TaskStatus } from '@lbrtw/shared';
 import { Prisma, TaskStatus as PrismaTaskStatus } from '@prisma/client';
 import { ApprovalsService } from '../approvals/approvals.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { resolveOrganizationScope } from '../auth/organization-scope';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransitionTaskDto } from './dto/transition-task.dto';
 
 const taskListInclude = {
   request: true,
-  location: true
+  location: {
+    include: {
+      organization: true
+    }
+  }
 } satisfies Prisma.TaskInclude;
 
 const taskDetailInclude = {
@@ -20,7 +25,11 @@ const taskDetailInclude = {
       }
     }
   },
-  location: true,
+  location: {
+    include: {
+      organization: true
+    }
+  },
   history: {
     orderBy: { createdAt: 'asc' as const }
   }
@@ -33,16 +42,28 @@ export class TasksService {
     private readonly approvalsService: ApprovalsService
   ) {}
 
-  findAll() {
+  findAll(user: AuthenticatedUser, requestedOrganizationId?: string) {
+    return this.findAllByScope(resolveOrganizationScope(user, requestedOrganizationId));
+  }
+
+  findAllForOrganization(organizationId: string) {
+    return this.findAllByScope(organizationId);
+  }
+
+  private findAllByScope(organizationId?: string) {
     return this.prisma.task.findMany({
+      where: this.buildTaskWhere(organizationId),
       include: taskListInclude,
       orderBy: { createdAt: 'desc' }
     });
   }
 
-  async findOne(id: string) {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
+  async findOne(id: string, user: AuthenticatedUser) {
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id,
+        ...this.buildTaskWhere(resolveOrganizationScope(user))
+      },
       include: taskDetailInclude
     });
 
@@ -57,7 +78,7 @@ export class TasksService {
     const actor = this.actorLabel(user);
     const assignedTo = actor;
 
-    return this.transitionTask(id, TaskStatus.NEW, TaskStatus.IN_PROGRESS, {
+    return this.transitionTask(user, id, TaskStatus.NEW, TaskStatus.IN_PROGRESS, {
       changedBy: actor,
       note: this.clean(dto.note) ?? 'Task started',
       data: { assignedTo }
@@ -67,7 +88,7 @@ export class TasksService {
   complete(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
     const actor = this.actorLabel(user);
 
-    return this.transitionTask(id, TaskStatus.IN_PROGRESS, TaskStatus.DONE_WAITING_APPROVAL, {
+    return this.transitionTask(user, id, TaskStatus.IN_PROGRESS, TaskStatus.DONE_WAITING_APPROVAL, {
       changedBy: actor,
       note: this.clean(dto.note) ?? 'Task completed, waiting for supervisor approval',
       data: {
@@ -80,7 +101,7 @@ export class TasksService {
   approve(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
     const actor = this.actorLabel(user);
 
-    return this.transitionTask(id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.APPROVED, {
+    return this.transitionTask(user, id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.APPROVED, {
       changedBy: actor,
       note: this.approvalsService.buildDecisionNote('approve', dto.note),
       data: {
@@ -93,13 +114,14 @@ export class TasksService {
   reject(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
     const actor = this.actorLabel(user);
 
-    return this.transitionTask(id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.REJECTED, {
+    return this.transitionTask(user, id, TaskStatus.DONE_WAITING_APPROVAL, TaskStatus.REJECTED, {
       changedBy: actor,
       note: this.approvalsService.buildDecisionNote('reject', dto.note)
     });
   }
 
   private async transitionTask(
+    user: AuthenticatedUser,
     id: string,
     expectedStatus: TaskStatus,
     nextStatus: TaskStatus,
@@ -109,7 +131,13 @@ export class TasksService {
       data?: Prisma.TaskUpdateInput;
     }
   ) {
-    const task = await this.prisma.task.findUnique({ where: { id } });
+    const organizationId = resolveOrganizationScope(user);
+    const task = await this.prisma.task.findFirst({
+      where: {
+        id,
+        ...this.buildTaskWhere(organizationId)
+      }
+    });
 
     if (!task) {
       throw new NotFoundException('Task not found');
@@ -160,5 +188,17 @@ export class TasksService {
 
   private actorLabel(user: AuthenticatedUser) {
     return this.clean(user.fullName) ?? user.email;
+  }
+
+  private buildTaskWhere(organizationId?: string): Prisma.TaskWhereInput | undefined {
+    if (!organizationId) {
+      return undefined;
+    }
+
+    return {
+      location: {
+        organizationId
+      }
+    };
   }
 }

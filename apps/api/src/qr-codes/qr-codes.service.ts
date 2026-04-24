@@ -1,30 +1,52 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { resolveOrganizationScope } from '../auth/organization-scope';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateQrCodeDto } from './dto/create-qr-code.dto';
 
 const qrListInclude = {
-  location: true
+  location: {
+    include: {
+      organization: true
+    }
+  }
 } satisfies Prisma.QrCodeInclude;
 
 const qrDetailInclude = {
-  location: true
+  location: {
+    include: {
+      organization: true
+    }
+  }
 } satisfies Prisma.QrCodeInclude;
 
 @Injectable()
 export class QrCodesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll() {
+  findAll(user: AuthenticatedUser, requestedOrganizationId?: string) {
+    return this.findAllByScope(resolveOrganizationScope(user, requestedOrganizationId));
+  }
+
+  findAllForOrganization(organizationId: string) {
+    return this.findAllByScope(organizationId);
+  }
+
+  private findAllByScope(organizationId?: string) {
     return this.prisma.qrCode.findMany({
+      where: this.buildQrWhere(organizationId),
       include: qrListInclude,
       orderBy: { createdAt: 'desc' }
     });
   }
 
-  async findOne(id: string) {
-    const qrCode = await this.prisma.qrCode.findUnique({
-      where: { id },
+  async findOne(id: string, user: AuthenticatedUser) {
+    const qrCode = await this.prisma.qrCode.findFirst({
+      where: {
+        id,
+        ...this.buildQrWhere(resolveOrganizationScope(user))
+      },
       include: qrDetailInclude
     });
 
@@ -35,8 +57,8 @@ export class QrCodesService {
     return qrCode;
   }
 
-  async findScanLogs(id: string) {
-    await this.findOne(id);
+  async findScanLogs(id: string, user: AuthenticatedUser) {
+    await this.findOne(id, user);
 
     return this.prisma.qrScanLog.findMany({
       where: { qrCodeId: id },
@@ -50,7 +72,7 @@ export class QrCodesService {
     });
   }
 
-  async create(dto: CreateQrCodeDto) {
+  async create(dto: CreateQrCodeDto, user: AuthenticatedUser) {
     const token = dto.token.trim();
     const label = dto.label.trim();
     const imagePath = this.clean(dto.imagePath) ?? this.defaultImagePath(token);
@@ -60,10 +82,18 @@ export class QrCodesService {
       throw new BadRequestException('QR token and label are required');
     }
 
-    const location = await this.prisma.location.findUnique({ where: { id: dto.locationId } });
+    const location = await this.prisma.location.findUnique({
+      where: { id: dto.locationId },
+      select: {
+        id: true,
+        organizationId: true
+      }
+    });
     if (!location) {
       throw new NotFoundException('Location not found');
     }
+
+    resolveOrganizationScope(user, location.organizationId);
 
     try {
       return await this.prisma.qrCode.create({
@@ -87,8 +117,8 @@ export class QrCodesService {
     }
   }
 
-  async activate(id: string) {
-    await this.findOne(id);
+  async activate(id: string, user: AuthenticatedUser) {
+    await this.findOne(id, user);
 
     return this.prisma.qrCode.update({
       where: { id },
@@ -100,8 +130,8 @@ export class QrCodesService {
     });
   }
 
-  async deactivate(id: string) {
-    await this.findOne(id);
+  async deactivate(id: string, user: AuthenticatedUser) {
+    await this.findOne(id, user);
 
     return this.prisma.qrCode.update({
       where: { id },
@@ -120,5 +150,17 @@ export class QrCodesService {
   private clean(value?: string): string | undefined {
     const cleanValue = value?.trim();
     return cleanValue ? cleanValue : undefined;
+  }
+
+  private buildQrWhere(organizationId?: string): Prisma.QrCodeWhereInput | undefined {
+    if (!organizationId) {
+      return undefined;
+    }
+
+    return {
+      location: {
+        organizationId
+      }
+    };
   }
 }

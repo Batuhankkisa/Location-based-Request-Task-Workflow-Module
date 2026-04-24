@@ -22,7 +22,13 @@ type RequestContext = {
 };
 
 const qrWithLocation = Prisma.validator<Prisma.QrCodeDefaultArgs>()({
-  include: { location: true }
+  include: {
+    location: {
+      include: {
+        organization: true
+      }
+    }
+  }
 });
 
 type QrWithLocation = Prisma.QrCodeGetPayload<typeof qrWithLocation>;
@@ -39,7 +45,13 @@ export class RequestsService {
     const cleanToken = token.trim();
     const qrCode = await this.prisma.qrCode.findUnique({
       where: { token: cleanToken },
-      include: { location: true }
+      include: {
+        location: {
+          include: {
+            organization: true
+          }
+        }
+      }
     });
 
     if (!qrCode) {
@@ -47,8 +59,13 @@ export class RequestsService {
       throw new NotFoundException('QR code not found or inactive');
     }
 
-    if (!qrCode.isActive) {
-      await this.logQrScan(qrCode, QrScanStatus.INACTIVE, context, 'QR code is inactive');
+    if (!qrCode.isActive || !qrCode.location.organization.isActive) {
+      await this.logQrScan(
+        qrCode,
+        QrScanStatus.INACTIVE,
+        context,
+        !qrCode.isActive ? 'QR code is inactive' : 'Organization is inactive'
+      );
       throw new NotFoundException('QR code not found or inactive');
     }
 
@@ -80,7 +97,13 @@ export class RequestsService {
 
     const qrCode = await this.prisma.qrCode.findUnique({
       where: { token },
-      include: { location: true }
+      include: {
+        location: {
+          include: {
+            organization: true
+          }
+        }
+      }
     });
 
     if (!qrCode) {
@@ -88,8 +111,15 @@ export class RequestsService {
       throw new NotFoundException('QR code not found or inactive');
     }
 
-    if (!qrCode.isActive) {
-      await this.logQrScan(qrCode, QrScanStatus.REQUEST_FAILED, context, 'Request failed because QR code is inactive');
+    if (!qrCode.isActive || !qrCode.location.organization.isActive) {
+      await this.logQrScan(
+        qrCode,
+        QrScanStatus.REQUEST_FAILED,
+        context,
+        !qrCode.isActive
+          ? 'Request failed because QR code is inactive'
+          : 'Request failed because organization is inactive'
+      );
       throw new NotFoundException('QR code not found or inactive');
     }
 

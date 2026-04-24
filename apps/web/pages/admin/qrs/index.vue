@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Role } from '@lbrtw/shared';
+import { LocationType, OrganizationType, Role } from '@lbrtw/shared';
 
 definePageMeta({
   middleware: 'admin-auth',
@@ -23,6 +23,12 @@ interface QrCodeListItem {
     name: string;
     code: string;
     type: string;
+    organization?: {
+      id: string;
+      name: string;
+      code: string;
+      type: OrganizationType;
+    };
   };
 }
 
@@ -32,6 +38,12 @@ interface QrCodeDetail extends QrCodeListItem {
     name: string;
     code: string;
     type: string;
+    organization?: {
+      id: string;
+      name: string;
+      code: string;
+      type: OrganizationType;
+    };
   };
 }
 
@@ -47,25 +59,158 @@ interface QrScanLog {
   errorMessage: string | null;
 }
 
+interface OrganizationOption {
+  id: string;
+  name: string;
+  code: string;
+  type: OrganizationType;
+  isActive: boolean;
+}
+
+interface LocationNode {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  children: LocationNode[];
+}
+
+interface LocationOption {
+  id: string;
+  label: string;
+  type: string;
+}
+
 const auth = useAuth();
+const route = useRoute();
+const router = useRouter();
 const requestUrl = useRequestURL();
 const apiBaseUrl = useApiBaseUrl();
 const searchTerm = ref('');
 const statusFilter = ref<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
 const typeFilter = ref('ALL');
 const floorFilter = ref('ALL');
+function readOrganizationIdFromRoute() {
+  return typeof route.query.organizationId === 'string' ? route.query.organizationId : 'ALL';
+}
+
+const selectedOrganizationId = ref(
+  auth.hasRole(Role.ADMIN)
+    ? readOrganizationIdFromRoute()
+    : (auth.user.value?.organizationId ?? 'ALL')
+);
 const selectedQrId = ref('');
 const actionLoading = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const copyMessage = ref('');
+const formSubmitting = ref(false);
+const formError = ref('');
+const formMessage = ref('');
+const qrForm = reactive({
+  token: '',
+  label: '',
+  locationId: '',
+  isActive: true,
+  imagePath: '',
+  note: ''
+});
 
-const canManageQr = computed(() => auth.hasRole(Role.ADMIN));
-const { data, pending, error, refresh } = await useAsyncData('qr-codes', () =>
-  useApiFetch<ApiResponse<QrCodeListItem[]>>('/qr-codes')
+const canManageQr = computed(() => auth.hasRole(Role.ADMIN, Role.SUPERVISOR));
+const canSelectOrganization = computed(() => auth.hasRole(Role.ADMIN));
+const { data: organizationData } = await useAsyncData('qr-organizations', async () => {
+  if (!canSelectOrganization.value) {
+    return {
+      success: true,
+      data: [] as OrganizationOption[]
+    };
+  }
+
+  return useApiFetch<ApiResponse<OrganizationOption[]>>('/organizations');
+});
+
+const organizationOptions = computed(() => organizationData.value?.data ?? []);
+const activeOrganizationId = computed(() => {
+  if (!canSelectOrganization.value) {
+    return auth.user.value?.organizationId ?? '';
+  }
+
+  return selectedOrganizationId.value === 'ALL' ? '' : selectedOrganizationId.value;
+});
+const {
+  data: locationTreeData,
+  pending: locationTreePending,
+  error: locationTreeError,
+  refresh: refreshLocationTree
+} = await useAsyncData(
+  'qr-location-tree',
+  async () => {
+    if (!activeOrganizationId.value) {
+      return {
+        success: true,
+        data: [] as LocationNode[]
+      };
+    }
+
+    return useApiFetch<ApiResponse<LocationNode[]>>('/locations/tree', {
+      query: {
+        organizationId: activeOrganizationId.value
+      }
+    });
+  },
+  {
+    watch: [activeOrganizationId]
+  }
+);
+const { data, pending, error, refresh } = await useAsyncData(
+  'qr-codes',
+  () =>
+    useApiFetch<ApiResponse<QrCodeListItem[]>>('/qr-codes', {
+      query:
+        selectedOrganizationId.value !== 'ALL'
+          ? {
+              organizationId: selectedOrganizationId.value
+            }
+          : undefined
+    }),
+  {
+    watch: [selectedOrganizationId]
+  }
 );
 
 const qrCodes = computed(() => data.value?.data ?? []);
+const locationOptions = computed<LocationOption[]>(() => {
+  const items: LocationOption[] = [];
+
+  const walk = (nodes: LocationNode[], depth = 0) => {
+    for (const node of nodes) {
+      if (node.type !== LocationType.ORGANIZATION) {
+        items.push({
+          id: node.id,
+          label: `${'-- '.repeat(depth)}${node.name} (${node.type})`,
+          type: node.type
+        });
+      }
+
+      if (node.children.length) {
+        walk(node.children, depth + 1);
+      }
+    }
+  };
+
+  walk(locationTreeData.value?.data ?? []);
+  return items;
+});
+const canSubmitQr = computed(() => Boolean(activeOrganizationId.value) && locationOptions.value.length > 0 && canManageQr.value);
+const currentOrganizationLabel = computed(() => {
+  if (canSelectOrganization.value) {
+    return selectedOrganizationId.value === 'ALL'
+      ? 'Tum kurumlar'
+      : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Secili kurum';
+  }
+
+  return auth.user.value?.organization?.name ?? 'Kurum tanimsiz';
+});
 
 const typeOptions = computed(() =>
   Array.from(new Set(qrCodes.value.map((item) => item.location.type).filter(Boolean))).sort((left, right) =>
@@ -85,7 +230,7 @@ const filteredQrCodes = computed(() =>
   qrCodes.value.filter((item) => {
     const matchesSearch = !searchTerm.value.trim()
       ? true
-      : `${item.label} ${item.token} ${item.location.name} ${item.location.code}`
+      : `${item.label} ${item.token} ${item.location.name} ${item.location.code} ${item.location.organization?.name ?? ''}`
           .toLocaleLowerCase('tr')
           .includes(searchTerm.value.trim().toLocaleLowerCase('tr'));
     const matchesStatus =
@@ -117,6 +262,53 @@ watch(
   },
   { immediate: true }
 );
+
+watch(
+  [selectedOrganizationId, locationOptions],
+  () => {
+    formError.value = '';
+    formMessage.value = '';
+
+    if (!locationOptions.value.some((item) => item.id === qrForm.locationId)) {
+      qrForm.locationId = locationOptions.value[0]?.id ?? '';
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => route.query.organizationId,
+  (organizationId) => {
+    if (!canSelectOrganization.value) {
+      return;
+    }
+
+    const nextOrganizationId = typeof organizationId === 'string' ? organizationId : 'ALL';
+    if (selectedOrganizationId.value !== nextOrganizationId) {
+      selectedOrganizationId.value = nextOrganizationId;
+    }
+  }
+);
+
+watch(selectedOrganizationId, (organizationId) => {
+  if (!canSelectOrganization.value) {
+    return;
+  }
+
+  const routeOrganizationId = readOrganizationIdFromRoute();
+  if (routeOrganizationId === organizationId) {
+    return;
+  }
+
+  const nextQuery = { ...route.query };
+  if (organizationId === 'ALL') {
+    delete nextQuery.organizationId;
+  } else {
+    nextQuery.organizationId = organizationId;
+  }
+
+  void router.replace({ query: nextQuery });
+});
 
 const {
   data: qrDetailData,
@@ -196,6 +388,48 @@ async function refreshSelection() {
   await Promise.all([refreshQrDetail(), refreshScanLogs()]);
 }
 
+async function submitQr() {
+  formError.value = '';
+  formMessage.value = '';
+
+  if (!canSubmitQr.value) {
+    formError.value = canSelectOrganization.value && !activeOrganizationId.value
+      ? 'Yeni QR icin once tek bir kurum sec.'
+      : 'QR baglamak icin uygun lokasyon bulunamadi.';
+    return;
+  }
+
+  formSubmitting.value = true;
+
+  try {
+    const response = await useApiFetch<ApiResponse<QrCodeDetail>>('/qr-codes', {
+      method: 'POST',
+      body: {
+        token: qrForm.token,
+        label: qrForm.label,
+        locationId: qrForm.locationId,
+        isActive: qrForm.isActive,
+        imagePath: qrForm.imagePath || undefined,
+        note: qrForm.note || undefined
+      }
+    });
+
+    qrForm.token = '';
+    qrForm.label = '';
+    qrForm.isActive = true;
+    qrForm.imagePath = '';
+    qrForm.note = '';
+    formMessage.value = 'QR kaydi olusturuldu.';
+    await Promise.all([refresh(), refreshLocationTree()]);
+    selectedQrId.value = response.data.id;
+    await refreshSelection();
+  } catch (requestError) {
+    formError.value = getApiErrorMessage(requestError, 'QR kaydi olusturulamadi.');
+  } finally {
+    formSubmitting.value = false;
+  }
+}
+
 async function setActiveState(action: 'activate' | 'deactivate') {
   if (!selectedQrId.value) {
     return;
@@ -259,7 +493,7 @@ function assetUrl(value?: string | null) {
         <p class="eyebrow">Envanter</p>
         <h1>QR Envanteri ve Lokasyon Veritabani</h1>
         <p class="lead">
-          Tum tesis genelindeki QR noktalarini yonet, durumlarini takip et ve secili kaydi aninda incele.
+          {{ currentOrganizationLabel }} icindeki QR noktalarini yonet, durumlarini takip et ve secili kaydi aninda incele.
         </p>
       </div>
 
@@ -273,6 +507,16 @@ function assetUrl(value?: string | null) {
       </label>
 
       <div class="inventory-filter-grid">
+        <label v-if="canSelectOrganization" class="inventory-select-card">
+          <span>Kurum</span>
+          <select v-model="selectedOrganizationId">
+            <option value="ALL">Tum kurumlar</option>
+            <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
+              {{ organization.name }}
+            </option>
+          </select>
+        </label>
+
         <label class="inventory-select-card">
           <span>Kat</span>
           <select v-model="floorFilter">
@@ -330,6 +574,121 @@ function assetUrl(value?: string | null) {
       </article>
     </div>
 
+    <div v-if="canManageQr" class="detail-grid">
+      <section class="panel">
+        <p class="eyebrow">Yeni QR</p>
+        <h2>Secili kurum icin QR kaydi olustur</h2>
+        <p class="muted">
+          Admin her kurumda QR acabilir. Supervisor sadece kendi kurumundaki lokasyonlara QR baglayabilir.
+        </p>
+
+        <form class="section" @submit.prevent="submitQr">
+          <div>
+            <label for="qrLocation">Lokasyon</label>
+            <select id="qrLocation" v-model="qrForm.locationId" :disabled="!canSubmitQr || locationTreePending">
+              <option v-if="!locationOptions.length" value="">Secilebilir lokasyon yok</option>
+              <option v-for="location in locationOptions" :key="location.id" :value="location.id">
+                {{ location.label }}
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label for="qrLabel">Etiket</label>
+            <input
+              id="qrLabel"
+              v-model="qrForm.label"
+              type="text"
+              maxlength="160"
+              placeholder="Deneme C - Oda 101"
+              :disabled="!canSubmitQr"
+              required
+            />
+          </div>
+
+          <div>
+            <label for="qrToken">Token</label>
+            <input
+              id="qrToken"
+              v-model="qrForm.token"
+              type="text"
+              maxlength="160"
+              placeholder="deneme-c-room-101"
+              :disabled="!canSubmitQr"
+              required
+            />
+          </div>
+
+          <div>
+            <label for="qrImagePath">Gorsel yolu</label>
+            <input
+              id="qrImagePath"
+              v-model="qrForm.imagePath"
+              type="text"
+              maxlength="240"
+              placeholder="/qr-assets/deneme-c-room-101.png"
+              :disabled="!canSubmitQr"
+            />
+          </div>
+
+          <div>
+            <label for="qrNote">Not</label>
+            <textarea
+              id="qrNote"
+              v-model="qrForm.note"
+              maxlength="1000"
+              placeholder="Opsiyonel aciklama"
+              :disabled="!canSubmitQr"
+            />
+          </div>
+
+          <label>
+            <span>Durum</span>
+            <select v-model="qrForm.isActive" :disabled="!canSubmitQr">
+              <option :value="true">Aktif</option>
+              <option :value="false">Pasif</option>
+            </select>
+          </label>
+
+          <div class="form-actions">
+            <button class="button primary" type="submit" :disabled="formSubmitting || !canSubmitQr">
+              {{ formSubmitting ? 'Olusturuluyor...' : 'QR kaydi olustur' }}
+            </button>
+            <button class="button" type="button" :disabled="locationTreePending" @click="refreshLocationTree">
+              Lokasyonlari yenile
+            </button>
+          </div>
+
+          <p v-if="canSelectOrganization && !activeOrganizationId" class="info-text">
+            QR olusturmak icin once tek bir kurum sec.
+          </p>
+          <p v-else-if="locationTreePending" class="info-text">Lokasyon secenekleri yukleniyor...</p>
+          <p v-else-if="locationTreeError" class="error-text">Lokasyon listesi alinamadi.</p>
+          <p v-else-if="!locationOptions.length" class="info-text">
+            Once bu kurum icin lokasyon ekle, sonra QR bagla.
+          </p>
+          <p v-if="formError" class="error-text">{{ formError }}</p>
+          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <p class="eyebrow">Yetki siniri</p>
+        <h2>Kurum disina cikmaz</h2>
+        <div class="section">
+          <p>
+            QR olusturma ve aktivasyon islemleri backend tarafinda organization scope ile kontrol edilir.
+          </p>
+          <p>
+            Supervisor baska kuruma ait lokasyon secse bile API 403 doner; sadece kendi kurumundaki QR'lari yonetebilir.
+          </p>
+          <p>
+            Public `/q/:token` akisi ayni kalir. Token hangi kuruma bagliysa istek o kurumun lokasyonuna cozulur.
+          </p>
+        </div>
+      </section>
+    </div>
+
     <div v-if="pending" class="inventory-empty-state panel">
       <p>QR envanteri yukleniyor...</p>
     </div>
@@ -382,7 +741,9 @@ function assetUrl(value?: string | null) {
                 </td>
                 <td>
                   <strong>{{ qr.location.name }}</strong>
-                  <span class="inventory-subline">{{ qr.location.code }}</span>
+                  <span class="inventory-subline">
+                    {{ qr.location.organization?.name ? `${qr.location.organization.name} · ` : '' }}{{ qr.location.code }}
+                  </span>
                 </td>
                 <td>
                   <span class="status-pill subtle">{{ qr.location.type }}</span>
@@ -449,6 +810,9 @@ function assetUrl(value?: string | null) {
               <article class="inventory-meta-card">
                 <span>Lokasyon</span>
                 <strong>{{ selectedSummary.location.name }}</strong>
+                <small class="inventory-meta-subvalue">
+                  {{ selectedSummary.location.organization?.name ?? currentOrganizationLabel }}
+                </small>
               </article>
               <article class="inventory-meta-card">
                 <span>Kod / Tur</span>

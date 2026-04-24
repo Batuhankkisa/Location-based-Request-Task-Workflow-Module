@@ -1,11 +1,19 @@
-import { Role } from '@lbrtw/shared';
+import { OrganizationType, Role } from '@lbrtw/shared';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
-import type { User } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { getJwtExpiresIn } from './auth.config';
 import type { AuthenticatedUser, JwtPayload } from './auth.types';
+
+const userWithOrganization = Prisma.validator<Prisma.UserDefaultArgs>()({
+  include: {
+    organization: true
+  }
+});
+
+type UserWithOrganization = Prisma.UserGetPayload<typeof userWithOrganization>;
 
 @Injectable()
 export class AuthService {
@@ -35,10 +43,13 @@ export class AuthService {
     }
 
     const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail }
+      where: { email: normalizedEmail },
+      include: {
+        organization: true
+      }
     });
 
-    if (!user || !user.isActive) {
+    if (!user || !this.canAuthenticate(user)) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
@@ -52,10 +63,13 @@ export class AuthService {
 
   async validateJwtUser(userId: string) {
     const user = await this.prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: userId },
+      include: {
+        organization: true
+      }
     });
 
-    if (!user || !user.isActive) {
+    if (!user || !this.canAuthenticate(user)) {
       throw new UnauthorizedException('Authentication required');
     }
 
@@ -67,22 +81,45 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       fullName: user.fullName,
-      role: user.role
+      role: user.role,
+      organizationId: user.organizationId
     };
 
     return this.jwtService.signAsync(payload);
   }
 
-  private toAuthenticatedUser(user: User): AuthenticatedUser {
+  private toAuthenticatedUser(user: UserWithOrganization): AuthenticatedUser {
     return {
       id: user.id,
       email: user.email,
       fullName: user.fullName,
       role: user.role as Role,
+      organizationId: user.organizationId,
+      organization: user.organization
+        ? {
+            id: user.organization.id,
+            name: user.organization.name,
+            code: user.organization.code,
+            type: user.organization.type as OrganizationType,
+            isActive: user.organization.isActive
+          }
+        : null,
       isActive: user.isActive,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     };
+  }
+
+  private canAuthenticate(user: UserWithOrganization) {
+    if (!user.isActive) {
+      return false;
+    }
+
+    if (user.role === Role.ADMIN) {
+      return true;
+    }
+
+    return Boolean(user.organization && user.organization.isActive);
   }
 
   private normalizeEmail(email: string) {

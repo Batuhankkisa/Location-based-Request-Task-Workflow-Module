@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { LocationsModule } from './locations/locations.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QrCodesModule } from './qr-codes/qr-codes.module';
 import { RequestsModule } from './requests/requests.module';
@@ -15,6 +16,7 @@ import { UsersModule } from './users/users.module';
     PrismaModule,
     AuthModule,
     HealthModule,
+    OrganizationsModule,
     LocationsModule,
     QrCodesModule,
     RequestsModule,
