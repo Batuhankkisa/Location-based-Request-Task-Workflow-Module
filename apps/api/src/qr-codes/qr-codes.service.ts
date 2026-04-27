@@ -75,7 +75,7 @@ export class QrCodesService {
   async create(dto: CreateQrCodeDto, user: AuthenticatedUser) {
     const token = dto.token.trim();
     const label = dto.label.trim();
-    const imagePath = this.clean(dto.imagePath) ?? this.defaultImagePath(token);
+    const imagePath = this.clean(dto.imagePath);
     const note = this.clean(dto.note);
 
     if (!token || !label) {
@@ -141,10 +141,6 @@ export class QrCodesService {
       },
       include: qrDetailInclude
     });
-  }
-
-  private defaultImagePath(token: string) {
-    return `/qr-assets/${token}.png`;
   }
 
   private clean(value?: string): string | undefined {

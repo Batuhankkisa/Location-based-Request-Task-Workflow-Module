@@ -186,7 +186,7 @@ async function upsertQrCode(input: {
   return prisma.qrCode.upsert({
     where: { token: input.token },
     update: {
-      imagePath: `/qr-assets/${input.token}.png`,
+      imagePath: null,
       label: input.label,
       isActive: true,
       deactivatedAt: null,
@@ -195,7 +195,7 @@ async function upsertQrCode(input: {
     },
     create: {
       token: input.token,
-      imagePath: `/qr-assets/${input.token}.png`,
+      imagePath: null,
       label: input.label,
       isActive: true,
       locationId: input.locationId,

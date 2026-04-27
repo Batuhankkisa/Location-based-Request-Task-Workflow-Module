@@ -49,6 +49,8 @@ interface QrScanLog {
 
 const auth = useAuth();
 const route = useRoute();
+const requestUrl = useRequestURL();
+const apiBaseUrl = useApiBaseUrl();
 const id = computed(() => String(route.params.id ?? ''));
 const actionLoading = ref('');
 const actionError = ref('');
@@ -76,6 +78,26 @@ const {
 
 const qr = computed(() => qrData.value?.data);
 const logs = computed(() => logsData.value?.data ?? []);
+const publicQrUrl = computed(() => {
+  if (!qr.value) {
+    return '';
+  }
+
+  return `${requestUrl.origin.replace(/\/$/, '')}/q/${qr.value.token}`;
+});
+const { dataUrl: generatedQrPreviewUrl } = useQrPreviewDataUrl(publicQrUrl);
+const qrImagePath = computed(() => qr.value?.imagePath ?? null);
+const qrPreviewImageUrl = computed(() => {
+  if (qrImagePath.value && !imageFailed.value) {
+    return assetUrl(qrImagePath.value);
+  }
+
+  return generatedQrPreviewUrl.value;
+});
+
+watch(qrImagePath, () => {
+  imageFailed.value = false;
+});
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -106,6 +128,20 @@ async function setActiveState(action: 'activate' | 'deactivate') {
   } finally {
     actionLoading.value = '';
   }
+}
+
+function assetUrl(value?: string | null) {
+  if (!value) {
+    return '';
+  }
+
+  if (/^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  const baseUrl = apiBaseUrl.replace(/\/$/, '');
+  const path = value.startsWith('/') ? value : `/${value}`;
+  return `${baseUrl}${path}`;
 }
 </script>
 
@@ -198,15 +234,24 @@ async function setActiveState(action: 'activate' | 'deactivate') {
 
       <section class="panel">
         <p class="eyebrow">Gorsel</p>
-        <h2>QR asset</h2>
-        <p v-if="qr.imagePath">
-          <a :href="qr.imagePath" target="_blank" rel="noreferrer">{{ qr.imagePath }}</a>
+        <h2>QR onizleme</h2>
+        <p>
+          <a :href="publicQrUrl" target="_blank" rel="noreferrer">{{ publicQrUrl }}</a>
         </p>
-        <div v-if="qr.imagePath && !imageFailed" class="qr-preview-frame">
-          <img :src="qr.imagePath" alt="QR gorsel onizleme" @error="imageFailed = true" />
+        <p v-if="qr.imagePath">
+          <a :href="assetUrl(qr.imagePath)" target="_blank" rel="noreferrer">{{ qr.imagePath }}</a>
+        </p>
+        <div class="qr-preview-frame">
+          <img
+            v-if="qrPreviewImageUrl"
+            :src="qrPreviewImageUrl"
+            alt="QR gorsel onizleme"
+            @error="imageFailed = true"
+          />
+          <p v-else class="muted">QR onizlemesi hazirlaniyor.</p>
         </div>
-        <p v-else class="muted">
-          {{ qr.imagePath ? 'Gorsel dosyasi henuz public klasore eklenmemis.' : 'Gorsel yolu tanimli degil.' }}
+        <p v-if="imageFailed && qr.imagePath" class="muted">
+          Kayitli gorsel bulunamadi; public URL icin otomatik QR gosteriliyor.
         </p>
       </section>
 
