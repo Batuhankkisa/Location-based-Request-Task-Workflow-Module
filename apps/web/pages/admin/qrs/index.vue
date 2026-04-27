@@ -104,6 +104,7 @@ const actionLoading = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
 const copyMessage = ref('');
+const previewImageFailed = ref(false);
 const formSubmitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
@@ -355,7 +356,25 @@ const publicQrUrl = computed(() => {
 
   return `${requestUrl.origin.replace(/\/$/, '')}/q/${selectedSummary.value.token}`;
 });
+const { dataUrl: generatedQrPreviewUrl } = useQrPreviewDataUrl(publicQrUrl);
+const selectedImagePath = computed(() => selectedSummary.value?.imagePath ?? null);
+const selectedPreviewImageUrl = computed(() => {
+  if (selectedImagePath.value && !previewImageFailed.value) {
+    return assetUrl(selectedImagePath.value);
+  }
+
+  return generatedQrPreviewUrl.value;
+});
+const selectedPreviewAlt = computed(() =>
+  selectedImagePath.value && !previewImageFailed.value
+    ? `${selectedSummary.value?.label ?? 'QR'} gorseli`
+    : `${selectedSummary.value?.label ?? 'QR'} kodu`
+);
 const recentLogs = computed(() => selectedLogs.value.slice(0, 4));
+
+watch([selectedQrId, selectedImagePath], () => {
+  previewImageFailed.value = false;
+});
 
 function formatDate(value?: string | null) {
   if (!value) {
@@ -620,13 +639,13 @@ function assetUrl(value?: string | null) {
           </div>
 
           <div>
-            <label for="qrImagePath">Gorsel yolu</label>
+            <label for="qrImagePath">Gorsel yolu (opsiyonel)</label>
             <input
               id="qrImagePath"
               v-model="qrForm.imagePath"
               type="text"
               maxlength="240"
-              placeholder="/qr-assets/deneme-c-room-101.png"
+              placeholder="Bos birakilabilir"
               :disabled="!canSubmitQr"
             />
           </div>
@@ -786,12 +805,14 @@ function assetUrl(value?: string | null) {
           <section class="inventory-preview-card">
             <div class="inventory-preview-frame">
               <img
-                v-if="selectedQr?.imagePath"
-                :src="assetUrl(selectedQr.imagePath)"
-                :alt="`${selectedSummary.label} gorseli`"
+                v-if="selectedPreviewImageUrl"
+                :src="selectedPreviewImageUrl"
+                :alt="selectedPreviewAlt"
+                @error="previewImageFailed = true"
               />
               <div v-else class="inventory-preview-placeholder">
                 <strong>{{ selectedSummary.token }}</strong>
+                <span>QR hazirlaniyor</span>
               </div>
             </div>
             <span class="inventory-preview-plate">ID: #{{ selectedSummary.label }}</span>
