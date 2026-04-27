@@ -17,4 +17,18 @@ export class CreateOrganizationDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  telegramEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  telegramChatId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  telegramNotificationThreadId?: string;
 }

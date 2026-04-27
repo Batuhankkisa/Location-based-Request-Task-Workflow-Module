@@ -11,6 +11,9 @@ const organizationListSelect = Prisma.validator<Prisma.OrganizationDefaultArgs>(
     code: true,
     type: true,
     isActive: true,
+    telegramEnabled: true,
+    telegramChatId: true,
+    telegramNotificationThreadId: true,
     createdAt: true,
     updatedAt: true,
     _count: {
@@ -29,6 +32,9 @@ const organizationDetailSelect = Prisma.validator<Prisma.OrganizationDefaultArgs
     code: true,
     type: true,
     isActive: true,
+    telegramEnabled: true,
+    telegramChatId: true,
+    telegramNotificationThreadId: true,
     createdAt: true,
     updatedAt: true,
     _count: {
@@ -93,7 +99,10 @@ export class OrganizationsService {
             name,
             code,
             type: dto.type,
-            isActive: dto.isActive ?? true
+            isActive: dto.isActive ?? true,
+            telegramEnabled: dto.telegramEnabled ?? false,
+            telegramChatId: this.cleanNullable(dto.telegramChatId),
+            telegramNotificationThreadId: this.cleanNullable(dto.telegramNotificationThreadId)
           }
         });
 
@@ -151,6 +160,18 @@ export class OrganizationsService {
       data.isActive = dto.isActive;
     }
 
+    if (typeof dto.telegramEnabled === 'boolean') {
+      data.telegramEnabled = dto.telegramEnabled;
+    }
+
+    if (typeof dto.telegramChatId === 'string') {
+      data.telegramChatId = this.cleanNullable(dto.telegramChatId);
+    }
+
+    if (typeof dto.telegramNotificationThreadId === 'string') {
+      data.telegramNotificationThreadId = this.cleanNullable(dto.telegramNotificationThreadId);
+    }
+
     try {
       return await this.prisma.$transaction(async (tx) => {
         const organization = await tx.organization.update({
@@ -203,5 +224,10 @@ export class OrganizationsService {
     }
 
     return organization;
+  }
+
+  private cleanNullable(value?: string) {
+    const cleanValue = value?.trim();
+    return cleanValue ? cleanValue : null;
   }
 }

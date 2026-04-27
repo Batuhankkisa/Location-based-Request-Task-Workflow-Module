@@ -12,6 +12,9 @@ interface OrganizationItem {
   code: string;
   type: OrganizationType;
   isActive: boolean;
+  telegramEnabled: boolean;
+  telegramChatId: string | null;
+  telegramNotificationThreadId: string | null;
   createdAt: string;
   updatedAt: string;
   _count: {
@@ -28,6 +31,19 @@ const form = reactive({
 const submitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
+const telegramForms = reactive<
+  Record<
+    string,
+    {
+      telegramEnabled: boolean;
+      telegramChatId: string;
+      telegramNotificationThreadId: string;
+      submitting: boolean;
+      error: string;
+      message: string;
+    }
+  >
+>({});
 
 const typeOptions = Object.values(OrganizationType);
 
@@ -56,13 +72,39 @@ const summaryCards = computed(() => [
     tone: 'amber'
   },
   {
-    label: 'Toplam lokasyon',
-    value: organizations.value.reduce((total, organization) => total + organization._count.locations, 0),
-    detail: 'Tum kurumlarda kayitli alanlar.',
+    label: 'Telegram aktif',
+    value: organizations.value.filter((organization) => organization.telegramEnabled && organization.telegramChatId).length,
+    detail: 'Grup bildirimi bagli kurum sayisi.',
     tone: 'rose'
   }
 ]);
 const spotlightOrganizations = computed(() => organizations.value.slice(0, 4));
+
+watch(
+  organizations,
+  (items) => {
+    const activeIds = new Set(items.map((organization) => organization.id));
+
+    for (const organization of items) {
+      const existing = telegramForms[organization.id];
+      telegramForms[organization.id] = {
+        telegramEnabled: organization.telegramEnabled,
+        telegramChatId: organization.telegramChatId ?? '',
+        telegramNotificationThreadId: organization.telegramNotificationThreadId ?? '',
+        submitting: existing?.submitting ?? false,
+        error: existing?.error ?? '',
+        message: existing?.message ?? ''
+      };
+    }
+
+    for (const id of Object.keys(telegramForms)) {
+      if (!activeIds.has(id)) {
+        delete telegramForms[id];
+      }
+    }
+  },
+  { immediate: true }
+);
 
 async function submit() {
   formError.value = '';
@@ -88,6 +130,37 @@ async function submit() {
     formError.value = getApiErrorMessage(requestError, 'Kurum olusturulamadi.');
   } finally {
     submitting.value = false;
+  }
+}
+
+async function saveTelegramSettings(organization: OrganizationItem) {
+  const state = telegramForms[organization.id];
+  if (!state) {
+    return;
+  }
+
+  state.error = '';
+  state.message = '';
+  state.submitting = true;
+
+  try {
+    await useApiFetch<ApiResponse<OrganizationItem>>(`/organizations/${organization.id}`, {
+      method: 'PATCH',
+      body: {
+        telegramEnabled: state.telegramEnabled,
+        telegramChatId: state.telegramChatId,
+        telegramNotificationThreadId: state.telegramNotificationThreadId
+      }
+    });
+
+    await refresh();
+    const nextState = telegramForms[organization.id] ?? state;
+    nextState.message = 'Telegram ayarlari kaydedildi.';
+  } catch (requestError) {
+    state.error = getApiErrorMessage(requestError, 'Telegram ayarlari kaydedilemedi.');
+  } finally {
+    const nextState = telegramForms[organization.id] ?? state;
+    nextState.submitting = false;
   }
 }
 
@@ -222,6 +295,100 @@ function formatDate(value: string) {
         </div>
       </section>
     </div>
+
+    <section class="panel workspace-table-card">
+      <div class="workspace-table-header">
+        <div>
+          <p class="eyebrow">Telegram</p>
+          <h2>Kurum bildirim ayarlari</h2>
+          <p class="workspace-card-copy">
+            Yeni QR talepleri icin kurum bazli Telegram grup chat ID tanimla. Bot token API env uzerinden okunur.
+          </p>
+        </div>
+      </div>
+
+      <div v-if="pending" class="workspace-empty-card">
+        <p>Telegram ayarlari yukleniyor...</p>
+      </div>
+
+      <div v-else-if="error" class="workspace-empty-card error-panel">
+        <p>Telegram ayarlari alinamadi.</p>
+      </div>
+
+      <div v-else class="telegram-settings-grid">
+        <article
+          v-for="organization in organizations"
+          :key="organization.id"
+          class="workspace-list-card telegram-settings-card"
+        >
+          <div class="telegram-settings-head">
+            <div>
+              <strong>{{ organization.name }}</strong>
+              <span>{{ organization.code }}</span>
+            </div>
+            <span
+              class="status-pill"
+              :class="{ approved: organization.telegramEnabled && organization.telegramChatId, rejected: !organization.telegramEnabled }"
+            >
+              {{ organization.telegramEnabled && organization.telegramChatId ? 'Telegram aktif' : 'Kapali' }}
+            </span>
+          </div>
+
+          <form
+            v-if="telegramForms[organization.id]"
+            class="telegram-settings-form"
+            @submit.prevent="saveTelegramSettings(organization)"
+          >
+            <label class="telegram-toggle-row">
+              <input v-model="telegramForms[organization.id].telegramEnabled" type="checkbox" />
+              <span>Bu kurum icin Telegram bildirimi gonder</span>
+            </label>
+
+            <div class="telegram-settings-fields">
+              <div>
+                <label :for="`telegramChatId-${organization.id}`">Chat ID</label>
+                <input
+                  :id="`telegramChatId-${organization.id}`"
+                  v-model="telegramForms[organization.id].telegramChatId"
+                  type="text"
+                  maxlength="120"
+                  placeholder="-1001234567890"
+                />
+              </div>
+
+              <div>
+                <label :for="`telegramThreadId-${organization.id}`">Topic ID</label>
+                <input
+                  :id="`telegramThreadId-${organization.id}`"
+                  v-model="telegramForms[organization.id].telegramNotificationThreadId"
+                  type="text"
+                  maxlength="80"
+                  placeholder="Opsiyonel"
+                />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="button small" type="submit" :disabled="telegramForms[organization.id].submitting">
+                {{ telegramForms[organization.id].submitting ? 'Kaydediliyor...' : 'Kaydet' }}
+              </button>
+            </div>
+
+            <p v-if="telegramForms[organization.id].error" class="error-text">
+              {{ telegramForms[organization.id].error }}
+            </p>
+            <p v-if="telegramForms[organization.id].message" class="success-text">
+              {{ telegramForms[organization.id].message }}
+            </p>
+          </form>
+        </article>
+
+        <article v-if="organizations.length === 0" class="workspace-empty-card">
+          <strong>Henuz kurum yok</strong>
+          <p>Telegram ayari icin once kurum olustur.</p>
+        </article>
+      </div>
+    </section>
 
     <section class="panel workspace-table-card">
       <div class="workspace-table-header">

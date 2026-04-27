@@ -40,6 +40,9 @@ Alanlar:
 - `code`
 - `type`
 - `isActive`
+- `telegramEnabled`
+- `telegramChatId`
+- `telegramNotificationThreadId`
 - `createdAt`
 - `updatedAt`
 
@@ -273,12 +276,47 @@ Mobile tarafinda endpoint path'leri ayni kalir:
 Ek organization secimi gerekmez.
 Login olan kullanici backend scope'u sayesinde kendi organization verisini gorur.
 
+## Telegram bildirimleri
+
+Yeni public QR talebi olustugunda API, ilgili kurumun Telegram ayarlari aktifse Telegram Bot API `sendMessage` endpoint'i ile metin mesaji gonderir.
+
+Davranis:
+
+- bot token tek merkezidir ve sadece env'den okunur: `TELEGRAM_BOT_TOKEN`
+- chat ayari organization seviyesindedir: `telegramEnabled`, `telegramChatId`, `telegramNotificationThreadId`
+- `telegramNotificationThreadId` forum/topic kullanan Telegram gruplari icin opsiyoneldir
+- Telegram hatasi ana akis icin fail sayilmaz; request, task, task history, media ve scan log kayitlari korunur
+- hata API loglarina yazilir
+
+Mesaj icerigi:
+
+- organization adi
+- lokasyon path'i
+- talep metni
+- transcript varsa kisa hali
+- request zamani
+- task status
+- task id
+- `ADMIN_WEB_BASE_URL` tanimliysa admin task detay linki
+
+Kurulum:
+
+1. Telegram'da BotFather ile yeni bot olustur ve token al.
+2. Botu hedef Telegram grubuna ekle.
+3. Grup mesajlarini okuyabilmesi icin gerekiyorsa BotFather uzerinden privacy mode'u kapat.
+4. Grubun `chat_id` degerini al. Supergroup ID'leri genelde `-100...` ile baslar.
+5. Admin web'de `/admin/organizations` ekranindan ilgili kurum icin `Telegram bildirimi gonder` secenegini ac, `Chat ID` alanini doldur ve kaydet.
+6. Forum topic kullaniyorsan `Topic ID` alanina Telegram `message_thread_id` degerini gir.
+
 ## Prisma ve migration
 
 Onemli schema degisiklikleri:
 
 - yeni `Organization` modeli
 - yeni `OrganizationType` enum
+- `Organization.telegramEnabled`
+- `Organization.telegramChatId`
+- `Organization.telegramNotificationThreadId`
 - `Location.organizationId`
 - `User.organizationId`
 - `Location` icin `@@unique([organizationId, code])`
@@ -286,8 +324,10 @@ Onemli schema degisiklikleri:
 Yeni migration:
 
 - `apps/api/prisma/migrations/20260424000000_multi_organization`
+- `apps/api/prisma/migrations/20260427000000_organization_telegram_settings`
 
 Migration, mevcut tek-kurum root lokasyonlardan organization kaydi uretir ve eski location agacini `organizationId` ile backfill eder.
+Telegram migration'i mevcut organization kayitlarina varsayilan kapali bildirim ayarlarini ekler.
 
 ## Lokal kurulum
 
@@ -306,6 +346,8 @@ API_PORT=3001
 NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
 JWT_SECRET=change-me-for-production
 JWT_EXPIRES_IN=1d
+TELEGRAM_BOT_TOKEN=
+ADMIN_WEB_BASE_URL=http://localhost:3000
 ```
 
 ## Lokal database ve seed
@@ -357,14 +399,20 @@ Adresler:
 8. `staff.b@example.com / Admin123!` ile giris yap, sadece Hastane B tasklarini gordugunu kontrol et
 9. `supervisor.a@example.com` ile Hastane A tasklari icin `approve/reject` dene
 10. `admin@example.com` ile `/admin/organizations`, `/admin/tasks`, `/admin/qrs`, `/admin/locations` ekranlarinda organization seciciyi test et
+11. Telegram testi icin `.env` icinde `TELEGRAM_BOT_TOKEN` ve `ADMIN_WEB_BASE_URL` tanimla
+12. `/admin/organizations` ekraninda test kurumuna `telegramChatId` bagla ve Telegram'i aktif et
+13. `http://localhost:3000/q/room-401-demo-token` uzerinden talep olustur; talep/task olusurken Telegram grubuna mesaj dustugunu kontrol et
 
 ## Staging / Render test akisi
 
 1. Render Postgres'i ayakta tut
-2. API deploy oncesi `pnpm prisma:migrate:deploy` calistir
-3. `pnpm prisma:seed` ile staging verisini yukle
-4. `admin@example.com` ile login olup organization ekranindan kayitlari kontrol et
-5. Public QR testlerini her iki organization tokeni ile dogrula
+2. API servisinde `TELEGRAM_BOT_TOKEN` secret env degerini tanimla
+3. API servisinde `ADMIN_WEB_BASE_URL` degerini web servis URL'i yap
+4. API deploy oncesi `pnpm prisma:migrate:deploy` calistir
+5. `pnpm prisma:seed` ile staging verisini yukle
+6. `admin@example.com` ile login olup organization ekranindan kayitlari kontrol et
+7. Test organization'ina Telegram chat id bagla ve bildirimi aktif et
+8. Public QR testlerini her iki organization tokeni ile dogrula
 
 ## Derleme dogrulamasi
 

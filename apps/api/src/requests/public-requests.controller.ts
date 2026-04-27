@@ -17,6 +17,19 @@ type RequestLike = {
   };
 };
 
+type PublicLocation = {
+  organization?: {
+    id: string;
+    name: string;
+    code: string;
+    type: string;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  };
+  [key: string]: unknown;
+};
+
 function getRequestContext(request: RequestLike) {
   const forwardedFor = request.headers?.['x-forwarded-for'];
   const userAgent = request.headers?.['user-agent'];
@@ -48,6 +61,25 @@ function requestMediaFileFilter(
   callback(new BadRequestException('Desteklenmeyen upload alanı veya dosya tipi'), false);
 }
 
+function toPublicLocation(location: PublicLocation) {
+  const organization = location.organization;
+
+  return {
+    ...location,
+    organization: organization
+      ? {
+          id: organization.id,
+          name: organization.name,
+          code: organization.code,
+          type: organization.type,
+          isActive: organization.isActive,
+          createdAt: organization.createdAt,
+          updatedAt: organization.updatedAt
+        }
+      : undefined
+  };
+}
+
 @Public()
 @Controller('public')
 export class PublicRequestsController {
@@ -65,7 +97,7 @@ export class PublicRequestsController {
         label: qrCode.label,
         imagePath: qrCode.imagePath,
         scanLogId: qrCode.scanLogId,
-        location: qrCode.location
+        location: toPublicLocation(qrCode.location)
       }
     };
   }
