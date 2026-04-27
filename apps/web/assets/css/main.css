@@ -1754,6 +1754,47 @@ th {
   font-size: 0.9rem;
 }
 
+.telegram-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.telegram-settings-card {
+  align-content: start;
+}
+
+.telegram-settings-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.telegram-settings-form,
+.telegram-settings-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.telegram-settings-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.telegram-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-soft);
+  font-weight: 800;
+}
+
+.telegram-toggle-row input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
 .workspace-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -2023,6 +2064,7 @@ th {
 
   .detail-grid,
   .workspace-metrics-grid,
+  .telegram-settings-fields,
   .inventory-detail-grid,
   .task-summary-grid,
   .task-action-grid,

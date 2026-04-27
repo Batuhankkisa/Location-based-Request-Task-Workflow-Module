@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { RequestChannel } from '@lbrtw/shared';
 import {
+  LocationType as PrismaLocationType,
   Prisma,
   QrScanStatus,
   RequestMediaType,
@@ -25,7 +26,21 @@ const qrWithLocation = Prisma.validator<Prisma.QrCodeDefaultArgs>()({
   include: {
     location: {
       include: {
-        organization: true
+        organization: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                type: true
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -45,13 +60,7 @@ export class RequestsService {
     const cleanToken = token.trim();
     const qrCode = await this.prisma.qrCode.findUnique({
       where: { token: cleanToken },
-      include: {
-        location: {
-          include: {
-            organization: true
-          }
-        }
-      }
+      ...qrWithLocation
     });
 
     if (!qrCode) {
@@ -97,13 +106,7 @@ export class RequestsService {
 
     const qrCode = await this.prisma.qrCode.findUnique({
       where: { token },
-      include: {
-        location: {
-          include: {
-            organization: true
-          }
-        }
-      }
+      ...qrWithLocation
     });
 
     if (!qrCode) {
@@ -208,9 +211,29 @@ export class RequestsService {
     });
 
     await this.notificationsService.notifyTaskCreated({
-      taskId: result.task.id,
-      locationName: qrCode.location.name,
-      requestText: finalRequestText
+      organization: {
+        id: qrCode.location.organization.id,
+        name: qrCode.location.organization.name,
+        telegramEnabled: qrCode.location.organization.telegramEnabled,
+        telegramChatId: qrCode.location.organization.telegramChatId,
+        telegramNotificationThreadId: qrCode.location.organization.telegramNotificationThreadId
+      },
+      location: {
+        id: qrCode.location.id,
+        name: qrCode.location.name,
+        path: this.buildLocationPath(qrCode.location)
+      },
+      request: {
+        id: result.visitorRequest.id,
+        text: finalRequestText,
+        transcriptText: result.visitorRequest.transcriptText,
+        createdAt: result.visitorRequest.createdAt
+      },
+      task: {
+        id: result.task.id,
+        status: result.task.status
+      },
+      adminTaskUrl: this.buildAdminTaskUrl(result.task.id)
     });
 
     return {
@@ -264,6 +287,26 @@ export class RequestsService {
   private clean(value?: string): string | undefined {
     const cleanValue = value?.trim();
     return cleanValue ? cleanValue : undefined;
+  }
+
+  private buildLocationPath(location: QrWithLocation['location']) {
+    const parts: string[] = [];
+
+    if (location.parent?.parent && location.parent.parent.type !== PrismaLocationType.ORGANIZATION) {
+      parts.push(location.parent.parent.name);
+    }
+
+    if (location.parent && location.parent.type !== PrismaLocationType.ORGANIZATION) {
+      parts.push(location.parent.name);
+    }
+
+    parts.push(location.name);
+    return parts.join(' / ');
+  }
+
+  private buildAdminTaskUrl(taskId: string) {
+    const baseUrl = this.clean(process.env.ADMIN_WEB_BASE_URL) ?? this.clean(process.env.WEB_BASE_URL);
+    return baseUrl ? `${baseUrl.replace(/\/$/, '')}/admin/tasks/${encodeURIComponent(taskId)}` : undefined;
   }
 
   private buildMediaOnlyRequestText(media: StoredRequestMedia[]) {

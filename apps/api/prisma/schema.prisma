@@ -54,15 +54,18 @@ enum Role {
 }
 
 model Organization {
-  id        String           @id @default(cuid())
-  name      String
-  code      String           @unique
-  type      OrganizationType @default(GENERAL)
-  isActive  Boolean          @default(true)
-  users     User[]
-  locations Location[]
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  id                           String           @id @default(cuid())
+  name                         String
+  code                         String           @unique
+  type                         OrganizationType @default(GENERAL)
+  isActive                     Boolean          @default(true)
+  telegramEnabled              Boolean          @default(false)
+  telegramChatId               String?
+  telegramNotificationThreadId String?
+  users                        User[]
+  locations                    Location[]
+  createdAt                    DateTime         @default(now())
+  updatedAt                    DateTime         @updatedAt
 
   @@index([type])
   @@index([isActive])
