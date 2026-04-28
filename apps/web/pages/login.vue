@@ -32,25 +32,35 @@ async function submit() {
 </script>
 
 <template>
-  <section class="section narrow">
+  <section class="section narrow login-screen">
+    <div class="login-brand">
+      <span class="login-brand-icon">N</span>
+      <h1>Nexus</h1>
+      <p>Enterprise Portal</p>
+    </div>
+
     <div class="panel auth-card">
       <div>
-        <p class="eyebrow">Personel girisi</p>
-        <h1>Admin ve personel login</h1>
-        <p class="lead">
-          Korumali task, QR ve lokasyon ekranlari icin JWT tabanli oturum ac.
-        </p>
+        <h2>Hesabınıza Giriş Yapın</h2>
       </div>
 
       <form class="section" @submit.prevent="submit">
         <div>
-          <label for="email">Email</label>
+          <label for="email">E-POSTA ADRESI</label>
           <input id="email" v-model="email" type="email" autocomplete="username" required />
         </div>
 
         <div>
-          <label for="password">Sifre</label>
+          <label for="password">ŞIFRE</label>
           <input id="password" v-model="password" type="password" autocomplete="current-password" required />
+        </div>
+
+        <div class="login-action-row">
+          <label class="remember-me">
+            <input type="checkbox" disabled />
+            <span>Beni Hatırla</span>
+          </label>
+          <span>Şifremi Unuttum?</span>
         </div>
 
         <div class="form-actions">
@@ -62,5 +72,7 @@ async function submit() {
         <p v-if="formError" class="error-text">{{ formError }}</p>
       </form>
     </div>
+
+    <p class="login-footer">© 2026 Nexus Enterprise. Tüm hakları saklıdır.</p>
   </section>
 </template>

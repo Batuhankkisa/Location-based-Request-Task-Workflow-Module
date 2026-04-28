@@ -214,15 +214,22 @@ async function submitLocation() {
     formSubmitting.value = false;
   }
 }
+
+function resetLocationForm() {
+  form.name = '';
+  form.code = '';
+  form.type = LocationType.FLOOR;
+  formError.value = '';
+  formMessage.value = '';
+}
 </script>
 
 <template>
-  <section class="section">
+  <section class="section location-workspace">
     <div class="page-heading">
       <div>
-        <p class="eyebrow">Admin</p>
-        <h1>Lokasyonlar</h1>
-        <p class="lead">{{ currentOrganizationLabel }}</p>
+        <h1>Lokasyon Ağacı</h1>
+        <p class="lead">Tesis, bina, kat ve oda hiyerarşisini yönetin.</p>
       </div>
       <div class="button-row">
         <label v-if="canSelectOrganization">
@@ -234,21 +241,17 @@ async function submitLocation() {
             </option>
           </select>
         </label>
-        <button class="button" type="button" @click="refresh">Yenile</button>
+        <button class="button export-button" type="button" @click="refresh">Yenile</button>
       </div>
     </div>
 
-    <div class="detail-grid">
-      <section class="panel">
-        <p class="eyebrow">Yeni lokasyon</p>
-        <h2>Kat, oda veya alan ekle</h2>
-        <p class="muted">
-          Admin her kuruma ekleyebilir. Supervisor sadece bagli oldugu kurumun agacina ekleme yapar.
-        </p>
+    <div class="detail-grid location-grid">
+      <section class="panel location-form-card">
+        <h2>Yeni Lokasyon Ekle</h2>
 
         <form class="section" @submit.prevent="submitLocation">
           <div>
-            <label for="locationParent">Ust lokasyon</label>
+            <label for="locationParent">Üst Lokasyon</label>
             <select id="locationParent" v-model="form.parentId" :disabled="!canSubmitLocation || pending">
               <option v-if="!parentOptions.length" value="">Secilebilir parent yok</option>
               <option v-for="option in parentOptions" :key="option.id" :value="option.id">
@@ -258,7 +261,7 @@ async function submitLocation() {
           </div>
 
           <div>
-            <label for="locationType">Tur</label>
+            <label for="locationType">Kategori</label>
             <select id="locationType" v-model="form.type" :disabled="!canSubmitLocation">
               <option v-for="option in locationTypeOptions" :key="option" :value="option">
                 {{ option }}
@@ -267,34 +270,37 @@ async function submitLocation() {
           </div>
 
           <div>
-            <label for="locationName">Ad</label>
+            <label for="locationName">Lokasyon Adı</label>
             <input
               id="locationName"
               v-model="form.name"
               type="text"
               maxlength="160"
-              placeholder="1. Kat veya Oda 101"
+              placeholder="Örn: Poliklinik Bekleme"
               :disabled="!canSubmitLocation"
               required
             />
           </div>
 
           <div>
-            <label for="locationCode">Kod</label>
+            <label for="locationCode">Lokasyon Kodu</label>
             <input
               id="locationCode"
               v-model="form.code"
               type="text"
               maxlength="80"
-              placeholder="DENEME_C_FLOOR_1"
+              placeholder="ÖRN: MK-A-Z-01"
               :disabled="!canSubmitLocation"
               required
             />
           </div>
 
           <div class="form-actions">
+            <button class="button small" type="button" :disabled="formSubmitting || !canSubmitLocation" @click="resetLocationForm">
+              Temizle
+            </button>
             <button class="button primary" type="submit" :disabled="formSubmitting || !canSubmitLocation">
-              {{ formSubmitting ? 'Kaydediliyor...' : 'Lokasyon ekle' }}
+              {{ formSubmitting ? 'Kaydediliyor...' : 'Kaydet' }}
             </button>
           </div>
 
@@ -310,36 +316,45 @@ async function submitLocation() {
         </form>
       </section>
 
-      <section class="panel">
-        <p class="eyebrow">Agac notu</p>
-        <h2>Kurum kokunu koru</h2>
-        <div class="section">
-          <p>
-            Her kurum olusurken kok `ORGANIZATION` lokasyonu otomatik acilir. Yeni kayitlar bu kokun veya alt
-            duzumlerin altina eklenir.
-          </p>
-          <p>
-            Oda icin genelde parent olarak kat secilir. Alan veya servis bolumu gibi esnek yapilar icin `AREA`
-            kullanabilirsin.
-          </p>
-          <p>
-            Staff kullanicilar bu sayfada agaci gorebilir ama yeni lokasyon acamaz.
-          </p>
+      <section class="panel location-tree-card">
+        <div class="location-tree-header">
+          <h2>Mevcut Lokasyonlar</h2>
+          <label class="tree-search">
+            <span aria-hidden="true"></span>
+            <input type="text" placeholder="Ağaçta ara..." disabled />
+          </label>
         </div>
+
+        <div v-if="pending" class="tree-state">
+          <p>Lokasyonlar yukleniyor...</p>
+        </div>
+
+        <div v-else-if="error" class="tree-state error-panel">
+          <p>Lokasyon agaci alinamadi.</p>
+        </div>
+
+        <LocationTree v-else-if="locations.length" :nodes="locations" />
+        <p v-else class="tree-state">Henuz lokasyon yok.</p>
       </section>
     </div>
 
-    <div v-if="pending" class="panel">
-      <p>Lokasyonlar yukleniyor...</p>
-    </div>
-
-    <div v-else-if="error" class="panel error-panel">
-      <p>Lokasyon agaci alinamadi.</p>
-    </div>
-
-    <div v-else class="panel">
-      <LocationTree v-if="locations.length" :nodes="locations" />
-      <p v-else>Henuz lokasyon yok.</p>
-    </div>
+    <section class="panel location-note-card">
+      <p class="eyebrow">Agac notu</p>
+      <h2>Kurum kokunu koru</h2>
+      <div class="section">
+        <p>
+          Her kurum olusurken kok `ORGANIZATION` lokasyonu otomatik acilir. Yeni kayitlar bu kokun veya alt
+          duzumlerin altina eklenir.
+        </p>
+        <p>
+          Oda icin genelde parent olarak kat secilir. Alan veya servis bolumu gibi esnek yapilar icin `AREA`
+          kullanabilirsin.
+        </p>
+        <p>
+          Staff kullanicilar bu sayfada agaci gorebilir ama yeni lokasyon acamaz.
+        </p>
+        <p class="muted">{{ currentOrganizationLabel }}</p>
+      </div>
+    </section>
   </section>
 </template>
