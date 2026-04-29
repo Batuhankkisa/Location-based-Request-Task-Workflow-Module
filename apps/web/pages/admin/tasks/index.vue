@@ -47,6 +47,8 @@ const selectedOrganizationId = ref(
     ? readOrganizationIdFromRoute()
     : (auth.user.value?.organizationId ?? 'ALL')
 );
+const searchTerm = ref('');
+const statusFilter = ref<'ALL' | TaskStatus>('ALL');
 
 const { data: organizationData } = await useAsyncData('task-organizations', async () => {
   if (!canSelectOrganization.value) {
@@ -78,6 +80,19 @@ const { data, pending, error, refresh } = await useAsyncData(
 );
 
 const tasks = computed(() => data.value?.data ?? []);
+const filteredTasks = computed(() =>
+  tasks.value.filter((task) => {
+    const requestSummary = parseRequestSummary(task.request.requestText);
+    const matchesStatus = statusFilter.value === 'ALL' ? true : task.status === statusFilter.value;
+    const matchesSearch = !searchTerm.value.trim()
+      ? true
+      : `${requestSummary.category} ${requestSummary.title} ${requestSummary.description} ${task.location.name} ${task.location.code} ${task.location.organization?.name ?? ''} ${task.status}`
+          .toLocaleLowerCase('tr')
+          .includes(searchTerm.value.trim().toLocaleLowerCase('tr'));
+
+    return matchesStatus && matchesSearch;
+  })
+);
 const currentOrganizationLabel = computed(() => {
   if (canSelectOrganization.value) {
     return selectedOrganizationId.value === 'ALL'
@@ -89,28 +104,28 @@ const currentOrganizationLabel = computed(() => {
 });
 const summaryCards = computed(() => [
   {
-    label: 'Toplam task',
+    label: 'Toplam gorev',
     value: tasks.value.length,
-    detail: 'Secili scope icindeki tum talepler.',
-    tone: 'indigo'
+    detail: currentOrganizationLabel.value,
+    tone: 'blue'
   },
   {
     label: 'Yeni',
     value: tasks.value.filter((task) => task.status === TaskStatus.NEW).length,
-    detail: 'Ilk aksiyon bekleyen talepler.',
-    tone: 'teal'
+    detail: 'Ilk aksiyon bekliyor',
+    tone: 'amber'
   },
   {
     label: 'Islemde',
     value: tasks.value.filter((task) => task.status === TaskStatus.IN_PROGRESS).length,
-    detail: 'Sahada devam eden isler.',
-    tone: 'amber'
+    detail: 'Sahada devam ediyor',
+    tone: 'violet'
   },
   {
     label: 'Onay bekleyen',
     value: tasks.value.filter((task) => task.status === TaskStatus.DONE_WAITING_APPROVAL).length,
-    detail: 'Supervisor kontrolune hazir kayitlar.',
-    tone: 'rose'
+    detail: 'Supervisor kontrolunde',
+    tone: 'green'
   }
 ]);
 
@@ -160,6 +175,33 @@ function taskStatusTone(status: TaskStatus) {
   }
 }
 
+function parseRequestSummary(value: string) {
+  const lines = value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const readField = (name: string) => {
+    const prefix = `${name}:`;
+    return lines.find((line) => line.toLocaleLowerCase('tr').startsWith(prefix.toLocaleLowerCase('tr')))
+      ?.slice(prefix.length)
+      .trim();
+  };
+  const category = readField('Kategori') ?? 'Genel Talep';
+  const title = readField('Baslik') ?? lines[0] ?? 'Baslik yok';
+  const description = readField('Aciklama') ?? lines.find((line) => !line.includes(':')) ?? value;
+
+  return {
+    category,
+    title: compactText(title, 92),
+    description: compactText(description, 140)
+  };
+}
+
+function compactText(value: string, maxLength: number) {
+  const cleanValue = value.replace(/\s+/g, ' ').trim();
+  return cleanValue.length > maxLength ? `${cleanValue.slice(0, maxLength - 1)}...` : cleanValue;
+}
+
 watch(
   () => route.query.organizationId,
   (organizationId) => {
@@ -196,18 +238,16 @@ watch(selectedOrganizationId, (organizationId) => {
 </script>
 
 <template>
-  <section class="section workspace-shell">
-    <header class="workspace-hero workspace-hero-operations">
-      <div class="workspace-title-block">
-        <p class="eyebrow">Operasyon</p>
-        <h1>Task listesi</h1>
-        <p class="lead">
-          {{ currentOrganizationLabel }} icindeki gorev akislarini izle, kritik yogunlugu gor ve kayit detayina in.
-        </p>
+  <section class="section users-azure-page tasks-azure-page">
+    <header class="users-azure-header tasks-azure-header">
+      <div class="users-title-block">
+        <p class="eyebrow">Request Center</p>
+        <h1>Gorev Listesi</h1>
+        <p>{{ currentOrganizationLabel }} icindeki talep kaynakli gorev akislarini izle ve kayit detayina in.</p>
       </div>
 
-      <div class="workspace-actions">
-        <label v-if="canSelectOrganization" class="workspace-control">
+      <div class="users-header-actions">
+        <label v-if="canSelectOrganization" class="users-filter-card">
           <span>Kurum</span>
           <select v-model="selectedOrganizationId">
             <option value="ALL">Tum kurumlar</option>
@@ -216,92 +256,116 @@ watch(selectedOrganizationId, (organizationId) => {
             </option>
           </select>
         </label>
-        <button class="button secondary" type="button" @click="refresh">Yenile</button>
+        <button class="button users-refresh-button" type="button" @click="refresh">Yenile</button>
       </div>
     </header>
 
-    <div class="workspace-metrics-grid">
+    <div class="users-stat-grid tasks-stat-grid">
       <article
         v-for="card in summaryCards"
         :key="card.label"
-        class="metric-card"
+        class="users-stat-card"
         :class="`tone-${card.tone}`"
       >
         <span>{{ card.label }}</span>
         <strong>{{ card.value }}</strong>
-        <p>{{ card.detail }}</p>
+        <small>{{ card.detail }}</small>
       </article>
     </div>
 
-    <section class="panel workspace-table-card">
-      <div class="workspace-table-header">
-        <div>
-          <p class="eyebrow">Canli liste</p>
-          <h2>Acik ve gecmis talepler</h2>
-          <p class="workspace-card-copy">
-            Task satirlarinda kurum, lokasyon, talep ozet ve durum bilgisi birlikte sunulur.
-          </p>
+    <section class="users-directory-panel tasks-directory-panel">
+      <div class="users-directory-toolbar">
+        <label class="users-search-field tasks-search-field">
+          <span aria-hidden="true"></span>
+          <input v-model="searchTerm" type="text" placeholder="Talep, lokasyon, kurum veya durum ara" />
+        </label>
+
+        <div class="users-toolbar-controls">
+          <label class="users-filter-card compact">
+            <span>Durum</span>
+            <select v-model="statusFilter">
+              <option value="ALL">Tum durumlar</option>
+              <option :value="TaskStatus.NEW">Yeni</option>
+              <option :value="TaskStatus.IN_PROGRESS">Islemde</option>
+              <option :value="TaskStatus.DONE_WAITING_APPROVAL">Onay bekliyor</option>
+              <option :value="TaskStatus.APPROVED">Onaylandi</option>
+              <option :value="TaskStatus.REJECTED">Reddedildi</option>
+            </select>
+          </label>
         </div>
-        <span class="workspace-badge">{{ currentOrganizationLabel }}</span>
       </div>
 
-      <div v-if="pending" class="workspace-empty-card">
+      <div class="users-directory-head">
+        <div>
+          <p class="eyebrow">Canli liste</p>
+          <h2>Talep gorevleri</h2>
+        </div>
+        <span class="users-count-pill">{{ filteredTasks.length }} kayit</span>
+      </div>
+
+      <div v-if="pending" class="users-empty-state">
         <p>Tasklar yukleniyor...</p>
       </div>
 
-      <div v-else-if="error" class="workspace-empty-card error-panel">
+      <div v-else-if="error" class="users-empty-state error-panel">
         <p>Tasklar alinamadi.</p>
       </div>
 
-      <div v-else class="table-wrap workspace-table-wrap">
-        <table class="workspace-table tasks-table">
+      <div v-else class="users-table-wrap">
+        <table class="users-azure-table tasks-azure-table">
           <thead>
             <tr>
-              <th>Olusturulma</th>
               <th v-if="canSelectOrganization">Kurum</th>
               <th>Lokasyon</th>
               <th>Talep</th>
               <th>Durum</th>
+              <th>Olusturulma</th>
               <th>Aksiyon</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="task in tasks" :key="task.id">
-              <td>
-                <div class="workspace-cell-stack">
-                  <strong>{{ formatDate(task.createdAt) }}</strong>
-                  <span>{{ formatTime(task.createdAt) }}</span>
-                </div>
-              </td>
+            <tr v-for="task in filteredTasks" :key="task.id">
               <td v-if="canSelectOrganization">
-                <div class="workspace-cell-stack">
+                <div class="users-stack-cell">
                   <strong>{{ task.location.organization?.name ?? '-' }}</strong>
-                  <span>{{ task.location.organization?.code ?? 'Genel scope' }}</span>
+                  <small>{{ task.location.organization?.code ?? 'Genel scope' }}</small>
                 </div>
               </td>
               <td>
-                <div class="workspace-cell-stack">
-                  <strong>{{ task.location.name }}</strong>
-                  <span>{{ task.location.code }}</span>
+                <div class="tasks-location-cell">
+                  <span class="tasks-location-icon" aria-hidden="true"></span>
+                  <span>
+                    <strong>{{ task.location.name }}</strong>
+                    <small>{{ task.location.code }}</small>
+                  </span>
                 </div>
               </td>
               <td>
-                <div class="workspace-cell-stack">
-                  <strong>{{ task.request.requestText }}</strong>
-                  <span>{{ task.request.channel }}</span>
+                <div class="tasks-request-cell">
+                  <span class="tasks-category-pill">{{ parseRequestSummary(task.request.requestText).category }}</span>
+                  <strong>{{ parseRequestSummary(task.request.requestText).title }}</strong>
+                  <small>{{ parseRequestSummary(task.request.requestText).description }}</small>
+                  <code>{{ task.request.channel }}</code>
                 </div>
               </td>
               <td>
-                <span class="status-pill" :class="taskStatusTone(task.status)">
+                <span class="users-status-pill tasks-status-pill" :class="taskStatusTone(task.status)">
+                  <span aria-hidden="true"></span>
                   {{ taskStatusLabel(task.status) }}
                 </span>
               </td>
               <td>
-                <NuxtLink class="button small" :to="`/admin/tasks/${task.id}`">Detay</NuxtLink>
+                <div class="users-stack-cell">
+                  <strong>{{ formatDate(task.createdAt) }}</strong>
+                  <small>{{ formatTime(task.createdAt) }}</small>
+                </div>
+              </td>
+              <td>
+                <NuxtLink class="button small tasks-detail-button" :to="`/admin/tasks/${task.id}`">Detay</NuxtLink>
               </td>
             </tr>
-            <tr v-if="tasks.length === 0">
-              <td :colspan="canSelectOrganization ? 6 : 5">Henuz task yok.</td>
+            <tr v-if="filteredTasks.length === 0">
+              <td :colspan="canSelectOrganization ? 6 : 5">Secili filtrelerde gorev yok.</td>
             </tr>
           </tbody>
         </table>

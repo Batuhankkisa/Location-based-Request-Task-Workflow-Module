@@ -105,6 +105,8 @@ const actionError = ref('');
 const actionMessage = ref('');
 const copyMessage = ref('');
 const previewImageFailed = ref(false);
+const isCreateModalOpen = ref(false);
+const pageMessage = ref('');
 const formSubmitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
@@ -399,6 +401,23 @@ function selectQr(id: string) {
   copyMessage.value = '';
 }
 
+function openCreateModal() {
+  pageMessage.value = '';
+  formError.value = '';
+  formMessage.value = '';
+  isCreateModalOpen.value = true;
+}
+
+function closeCreateModal() {
+  if (formSubmitting.value) {
+    return;
+  }
+
+  isCreateModalOpen.value = false;
+  formError.value = '';
+  formMessage.value = '';
+}
+
 async function refreshSelection() {
   if (!selectedQrId.value) {
     return;
@@ -410,6 +429,7 @@ async function refreshSelection() {
 async function submitQr() {
   formError.value = '';
   formMessage.value = '';
+  pageMessage.value = '';
 
   if (!canSubmitQr.value) {
     formError.value = canSelectOrganization.value && !activeOrganizationId.value
@@ -438,7 +458,8 @@ async function submitQr() {
     qrForm.isActive = true;
     qrForm.imagePath = '';
     qrForm.note = '';
-    formMessage.value = 'QR kaydi olusturuldu.';
+    isCreateModalOpen.value = false;
+    pageMessage.value = 'QR kaydi olusturuldu.';
     await Promise.all([refresh(), refreshLocationTree()]);
     selectedQrId.value = response.data.id;
     await refreshSelection();
@@ -506,22 +527,28 @@ function assetUrl(value?: string | null) {
 </script>
 
 <template>
-  <section class="inventory-dashboard">
-    <header class="inventory-hero">
-      <div>
-        <p class="eyebrow">Envanter</p>
-        <h1>QR Envanteri ve Lokasyon Veritabani</h1>
-        <p class="lead">
-          {{ currentOrganizationLabel }} icindeki QR noktalarini yonet, durumlarini takip et ve secili kaydi aninda incele.
-        </p>
+  <section class="section users-azure-page inventory-dashboard inventory-azure-page">
+    <header class="users-azure-header inventory-azure-header">
+      <div class="users-title-block">
+        <p class="eyebrow">QR Inventory</p>
+        <h1>QR Envanteri</h1>
+        <p>{{ currentOrganizationLabel }} icindeki QR noktalarini, durumlarini ve scan gecmisini yonet.</p>
       </div>
 
-      <button class="button primary" type="button" @click="refresh">Kayitlari yenile</button>
+      <div class="users-header-actions">
+        <button v-if="canManageQr" class="button primary users-create-button" type="button" @click="openCreateModal">
+          <span class="users-plus-icon" aria-hidden="true"></span>
+          Yeni QR
+        </button>
+        <button class="button users-refresh-button" type="button" @click="refresh">Yenile</button>
+      </div>
     </header>
 
-    <div class="inventory-toolbar">
+    <p v-if="pageMessage" class="success-text users-page-message">{{ pageMessage }}</p>
+
+    <div class="inventory-toolbar users-directory-panel">
       <label class="inventory-search-field">
-        <span>Ara</span>
+        <span aria-hidden="true"></span>
         <input v-model="searchTerm" type="text" placeholder="QR kodu, token veya lokasyon ara..." />
       </label>
 
@@ -570,142 +597,27 @@ function assetUrl(value?: string | null) {
       </div>
     </div>
 
-    <div class="inventory-stats">
-      <article class="inventory-stat-card">
+    <div class="inventory-stats users-stat-grid">
+      <article class="inventory-stat-card users-stat-card tone-blue">
         <span>Toplam QR</span>
         <strong>{{ stats.total }}</strong>
-        <p>Platformdaki tum aktif ve pasif kayitlar.</p>
+        <small>Aktif ve pasif tum kayitlar</small>
       </article>
-      <article class="inventory-stat-card">
+      <article class="inventory-stat-card users-stat-card tone-green">
         <span>Aktif</span>
         <strong>{{ stats.active }}</strong>
-        <p>Talep akisini canli tasiyan QR noktalar.</p>
+        <small>Talep akisi acik noktalar</small>
       </article>
-      <article class="inventory-stat-card">
+      <article class="inventory-stat-card users-stat-card tone-violet">
         <span>Pasif</span>
         <strong>{{ stats.inactive }}</strong>
-        <p>Revizyon veya kapatma bekleyen kayitlar.</p>
+        <small>Revizyon veya kapali kayitlar</small>
       </article>
-      <article class="inventory-stat-card">
+      <article class="inventory-stat-card users-stat-card tone-amber">
         <span>Toplam okutma</span>
         <strong>{{ stats.scans }}</strong>
-        <p>Kayitli scan log adetlerinin toplami.</p>
+        <small>Kayitli scan log toplami</small>
       </article>
-    </div>
-
-    <div v-if="canManageQr" class="detail-grid">
-      <section class="panel">
-        <p class="eyebrow">Yeni QR</p>
-        <h2>Secili kurum icin QR kaydi olustur</h2>
-        <p class="muted">
-          Admin her kurumda QR acabilir. Supervisor sadece kendi kurumundaki lokasyonlara QR baglayabilir.
-        </p>
-
-        <form class="section" @submit.prevent="submitQr">
-          <div>
-            <label for="qrLocation">Lokasyon</label>
-            <select id="qrLocation" v-model="qrForm.locationId" :disabled="!canSubmitQr || locationTreePending">
-              <option v-if="!locationOptions.length" value="">Secilebilir lokasyon yok</option>
-              <option v-for="location in locationOptions" :key="location.id" :value="location.id">
-                {{ location.label }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label for="qrLabel">Etiket</label>
-            <input
-              id="qrLabel"
-              v-model="qrForm.label"
-              type="text"
-              maxlength="160"
-              placeholder="Deneme C - Oda 101"
-              :disabled="!canSubmitQr"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="qrToken">Token</label>
-            <input
-              id="qrToken"
-              v-model="qrForm.token"
-              type="text"
-              maxlength="160"
-              placeholder="deneme-c-room-101"
-              :disabled="!canSubmitQr"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="qrImagePath">Gorsel yolu (opsiyonel)</label>
-            <input
-              id="qrImagePath"
-              v-model="qrForm.imagePath"
-              type="text"
-              maxlength="240"
-              placeholder="Bos birakilabilir"
-              :disabled="!canSubmitQr"
-            />
-          </div>
-
-          <div>
-            <label for="qrNote">Not</label>
-            <textarea
-              id="qrNote"
-              v-model="qrForm.note"
-              maxlength="1000"
-              placeholder="Opsiyonel aciklama"
-              :disabled="!canSubmitQr"
-            />
-          </div>
-
-          <label>
-            <span>Durum</span>
-            <select v-model="qrForm.isActive" :disabled="!canSubmitQr">
-              <option :value="true">Aktif</option>
-              <option :value="false">Pasif</option>
-            </select>
-          </label>
-
-          <div class="form-actions">
-            <button class="button primary" type="submit" :disabled="formSubmitting || !canSubmitQr">
-              {{ formSubmitting ? 'Olusturuluyor...' : 'QR kaydi olustur' }}
-            </button>
-            <button class="button" type="button" :disabled="locationTreePending" @click="refreshLocationTree">
-              Lokasyonlari yenile
-            </button>
-          </div>
-
-          <p v-if="canSelectOrganization && !activeOrganizationId" class="info-text">
-            QR olusturmak icin once tek bir kurum sec.
-          </p>
-          <p v-else-if="locationTreePending" class="info-text">Lokasyon secenekleri yukleniyor...</p>
-          <p v-else-if="locationTreeError" class="error-text">Lokasyon listesi alinamadi.</p>
-          <p v-else-if="!locationOptions.length" class="info-text">
-            Once bu kurum icin lokasyon ekle, sonra QR bagla.
-          </p>
-          <p v-if="formError" class="error-text">{{ formError }}</p>
-          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
-        </form>
-      </section>
-
-      <section class="panel">
-        <p class="eyebrow">Yetki siniri</p>
-        <h2>Kurum disina cikmaz</h2>
-        <div class="section">
-          <p>
-            QR olusturma ve aktivasyon islemleri backend tarafinda organization scope ile kontrol edilir.
-          </p>
-          <p>
-            Supervisor baska kuruma ait lokasyon secse bile API 403 doner; sadece kendi kurumundaki QR'lari yonetebilir.
-          </p>
-          <p>
-            Public `/q/:token` akisi ayni kalir. Token hangi kuruma bagliysa istek o kurumun lokasyonuna cozulur.
-          </p>
-        </div>
-      </section>
     </div>
 
     <div v-if="pending" class="inventory-empty-state panel">
@@ -911,6 +823,114 @@ function assetUrl(value?: string | null) {
           </template>
         </template>
       </aside>
+    </div>
+
+    <div v-if="isCreateModalOpen" class="users-modal-backdrop" role="presentation" @click.self="closeCreateModal">
+      <section class="users-create-modal inventory-create-modal" role="dialog" aria-modal="true" aria-labelledby="createQrTitle">
+        <header class="users-modal-header">
+          <div>
+            <p class="eyebrow">Yeni QR</p>
+            <h2 id="createQrTitle">QR kaydi olustur</h2>
+          </div>
+          <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
+        </header>
+
+        <form class="users-modal-form inventory-create-form" @submit.prevent="submitQr">
+          <label>
+            <span>Lokasyon</span>
+            <select id="qrLocation" v-model="qrForm.locationId" :disabled="!canSubmitQr || locationTreePending">
+              <option v-if="!locationOptions.length" value="">Secilebilir lokasyon yok</option>
+              <option v-for="location in locationOptions" :key="location.id" :value="location.id">
+                {{ location.label }}
+              </option>
+            </select>
+          </label>
+
+          <div class="users-modal-grid">
+            <label>
+              <span>Etiket</span>
+              <input
+                id="qrLabel"
+                v-model="qrForm.label"
+                type="text"
+                maxlength="160"
+                placeholder="Deneme C - Oda 101"
+                :disabled="!canSubmitQr"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Token</span>
+              <input
+                id="qrToken"
+                v-model="qrForm.token"
+                type="text"
+                maxlength="160"
+                placeholder="deneme-c-room-101"
+                :disabled="!canSubmitQr"
+                required
+              />
+            </label>
+          </div>
+
+          <div class="users-modal-grid">
+            <label>
+              <span>Gorsel yolu</span>
+              <input
+                id="qrImagePath"
+                v-model="qrForm.imagePath"
+                type="text"
+                maxlength="240"
+                placeholder="Opsiyonel"
+                :disabled="!canSubmitQr"
+              />
+            </label>
+
+            <label>
+              <span>Durum</span>
+              <select v-model="qrForm.isActive" :disabled="!canSubmitQr">
+                <option :value="true">Aktif</option>
+                <option :value="false">Pasif</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>Not</span>
+            <textarea
+              id="qrNote"
+              v-model="qrForm.note"
+              maxlength="1000"
+              placeholder="Opsiyonel aciklama"
+              :disabled="!canSubmitQr"
+            />
+          </label>
+
+          <p v-if="canSelectOrganization && !activeOrganizationId" class="info-text">
+            QR olusturmak icin once tek bir kurum sec.
+          </p>
+          <p v-else-if="locationTreePending" class="info-text">Lokasyon secenekleri yukleniyor...</p>
+          <p v-else-if="locationTreeError" class="error-text">Lokasyon listesi alinamadi.</p>
+          <p v-else-if="!locationOptions.length" class="info-text">
+            Once bu kurum icin lokasyon ekle, sonra QR bagla.
+          </p>
+          <p v-if="formError" class="error-text">{{ formError }}</p>
+          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
+
+          <div class="users-modal-actions">
+            <button class="button small" type="button" :disabled="formSubmitting" @click="refreshLocationTree">
+              Lokasyonlari yenile
+            </button>
+            <button class="button small" type="button" :disabled="formSubmitting" @click="closeCreateModal">
+              Vazgec
+            </button>
+            <button class="button primary" type="submit" :disabled="formSubmitting || !canSubmitQr">
+              {{ formSubmitting ? 'Olusturuluyor...' : 'Olustur' }}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   </section>
 </template>

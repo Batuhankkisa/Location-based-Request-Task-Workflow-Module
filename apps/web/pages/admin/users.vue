@@ -36,6 +36,9 @@ const route = useRoute();
 const router = useRouter();
 const searchTerm = ref('');
 const roleFilter = ref<'ALL' | Role>('ALL');
+const statusFilter = ref<'ALL' | 'ACTIVE' | 'PASSIVE'>('ALL');
+const isCreateModalOpen = ref(false);
+const pageMessage = ref('');
 
 function readOrganizationIdFromRoute() {
   return typeof route.query.organizationId === 'string' ? route.query.organizationId : 'ALL';
@@ -87,42 +90,47 @@ const currentOrganizationLabel = computed(() =>
 const filteredUsers = computed(() =>
   users.value.filter((user) => {
     const matchesRole = roleFilter.value === 'ALL' ? true : user.role === roleFilter.value;
+    const matchesStatus =
+      statusFilter.value === 'ALL'
+        ? true
+        : statusFilter.value === 'ACTIVE'
+          ? user.isActive
+          : !user.isActive;
     const matchesSearch = !searchTerm.value.trim()
       ? true
-      : `${user.fullName} ${user.email} ${user.organization?.name ?? ''} ${user.role}`
+      : `${user.fullName} ${user.email} ${user.organization?.name ?? ''} ${user.organization?.code ?? ''} ${user.role}`
           .toLocaleLowerCase('tr')
           .includes(searchTerm.value.trim().toLocaleLowerCase('tr'));
 
-    return matchesRole && matchesSearch;
+    return matchesRole && matchesStatus && matchesSearch;
   })
 );
 const summaryCards = computed(() => [
   {
     label: 'Toplam kullanici',
     value: users.value.length,
-    detail: 'Secili scope icindeki tum hesaplar.',
-    tone: 'indigo'
+    detail: currentOrganizationLabel.value,
+    tone: 'blue'
+  },
+  {
+    label: 'Aktif hesap',
+    value: users.value.filter((user) => user.isActive).length,
+    detail: 'Oturum acabilir',
+    tone: 'green'
   },
   {
     label: 'Supervisor',
     value: users.value.filter((user) => user.role === Role.SUPERVISOR).length,
-    detail: 'Kurum yonetimi yapabilen hesaplar.',
-    tone: 'teal'
+    detail: 'Onay ve ekip yonetimi',
+    tone: 'violet'
   },
   {
     label: 'Staff',
     value: users.value.filter((user) => user.role === Role.STAFF).length,
-    detail: 'Operasyon gorevlerini yurutur.',
+    detail: 'Operasyon personeli',
     tone: 'amber'
-  },
-  {
-    label: 'Global admin',
-    value: users.value.filter((user) => user.role === Role.ADMIN).length,
-    detail: 'Tum kurumlardan sorumlu hesaplar.',
-    tone: 'rose'
   }
 ]);
-const recentUsers = computed(() => users.value.slice(0, 4));
 
 watch(
   () => route.query.organizationId,
@@ -151,7 +159,7 @@ watch(selectedOrganizationId, (organizationId) => {
 });
 
 watch(
-  [selectedOrganizationId, () => form.role],
+  [selectedOrganizationId, () => form.role, organizationOptions],
   () => {
     formError.value = '';
     formMessage.value = '';
@@ -173,9 +181,36 @@ watch(
   { immediate: true }
 );
 
+function openCreateModal() {
+  pageMessage.value = '';
+  formError.value = '';
+  formMessage.value = '';
+  isCreateModalOpen.value = true;
+}
+
+function closeCreateModal() {
+  if (submitting.value) {
+    return;
+  }
+
+  isCreateModalOpen.value = false;
+  formError.value = '';
+  formMessage.value = '';
+}
+
+function resetForm() {
+  form.fullName = '';
+  form.email = '';
+  form.password = '';
+  form.role = Role.SUPERVISOR;
+  form.organizationId = activeOrganizationId.value || organizationOptions.value[0]?.id || '';
+  form.isActive = true;
+}
+
 async function submit() {
   formError.value = '';
   formMessage.value = '';
+  pageMessage.value = '';
 
   if (form.role !== Role.ADMIN && !form.organizationId) {
     formError.value = 'Supervisor ve staff kullanicilari bir kuruma baglamalisin.';
@@ -197,12 +232,9 @@ async function submit() {
       }
     });
 
-    form.fullName = '';
-    form.email = '';
-    form.password = '';
-    form.role = Role.SUPERVISOR;
-    form.isActive = true;
-    formMessage.value = 'Kullanici olusturuldu.';
+    resetForm();
+    isCreateModalOpen.value = false;
+    pageMessage.value = 'Kullanici olusturuldu.';
     await refresh();
   } catch (requestError) {
     formError.value = getApiErrorMessage(requestError, 'Kullanici olusturulamadi.');
@@ -217,21 +249,34 @@ function formatDate(value: string) {
     timeStyle: 'short'
   }).format(new Date(value));
 }
+
+function getInitials(value: string) {
+  const parts = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+
+  return parts.map((part) => part[0]?.toLocaleUpperCase('tr') ?? '').join('') || 'U';
+}
 </script>
 
 <template>
-  <section class="section workspace-shell">
-    <header class="workspace-hero workspace-hero-users">
-      <div class="workspace-title-block">
-        <p class="eyebrow">Kullanici yonetimi</p>
-        <h1>Supervisor ve staff hesaplari</h1>
-        <p class="lead">
-          {{ currentOrganizationLabel }} scope'undaki yonetici ve saha ekiplerini olustur, filtrele ve dagilimi izle.
-        </p>
+  <section class="section users-azure-page">
+    <header class="users-azure-header">
+      <div class="users-title-block">
+        <p class="eyebrow">Azure Directory</p>
+        <h1>Kullanici Yonetimi</h1>
+        <p>{{ currentOrganizationLabel }} kapsaminda roller, durumlar ve kurum baglantilari.</p>
       </div>
 
-      <div class="workspace-actions">
-        <label class="workspace-control">
+      <div class="users-header-actions">
+        <button class="button primary users-create-button" type="button" @click="openCreateModal">
+          <span class="users-plus-icon" aria-hidden="true"></span>
+          Yeni kullanici
+        </button>
+
+        <label class="users-filter-card">
           <span>Kurum</span>
           <select v-model="selectedOrganizationId">
             <option value="ALL">Tum kurumlar</option>
@@ -240,152 +285,34 @@ function formatDate(value: string) {
             </option>
           </select>
         </label>
-        <button class="button secondary" type="button" @click="refresh">Yenile</button>
+        <button class="button users-refresh-button" type="button" @click="refresh">Yenile</button>
       </div>
     </header>
 
-    <div class="workspace-metrics-grid">
+    <p v-if="pageMessage" class="success-text users-page-message">{{ pageMessage }}</p>
+
+    <div class="users-stat-grid">
       <article
         v-for="card in summaryCards"
         :key="card.label"
-        class="metric-card"
+        class="users-stat-card"
         :class="`tone-${card.tone}`"
       >
         <span>{{ card.label }}</span>
         <strong>{{ card.value }}</strong>
-        <p>{{ card.detail }}</p>
+        <small>{{ card.detail }}</small>
       </article>
     </div>
 
-    <div class="workspace-grid workspace-grid-wide">
-      <section class="panel workspace-form-card">
-        <div class="workspace-card-head">
-          <div>
-            <p class="eyebrow">Yeni kullanici</p>
-            <h2>Kurum yoneticisi veya personel ekle</h2>
-          </div>
-          <span class="workspace-badge">Rol tabanli olusturma</span>
-        </div>
-
-        <p class="workspace-card-copy">
-          Admin olarak bir kuruma supervisor ya da staff baglayabilir, istersen global admin hesabi da acabilirsin.
-        </p>
-
-        <form class="workspace-form-stack" @submit.prevent="submit">
-          <div>
-            <label for="userRole">Rol</label>
-            <select id="userRole" v-model="form.role">
-              <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
-            </select>
-          </div>
-
-          <div>
-            <label for="userOrganization">Kurum</label>
-            <select id="userOrganization" v-model="form.organizationId" :disabled="form.role === Role.ADMIN">
-              <option v-if="!organizationOptions.length" value="">Kurum yok</option>
-              <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
-                {{ organization.name }}
-              </option>
-            </select>
-          </div>
-
-          <div>
-            <label for="userFullName">Ad soyad</label>
-            <input
-              id="userFullName"
-              v-model="form.fullName"
-              type="text"
-              maxlength="160"
-              placeholder="Dr. Ayse Yilmaz"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="userEmail">E-posta</label>
-            <input
-              id="userEmail"
-              v-model="form.email"
-              type="email"
-              maxlength="160"
-              placeholder="supervisor.c@example.com"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="userPassword">Sifre</label>
-            <input
-              id="userPassword"
-              v-model="form.password"
-              type="text"
-              minlength="6"
-              placeholder="Admin123!"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="userStatus">Durum</label>
-            <select id="userStatus" v-model="form.isActive">
-              <option :value="true">Aktif</option>
-              <option :value="false">Pasif</option>
-            </select>
-          </div>
-
-          <div class="form-actions">
-            <button class="button primary" type="submit" :disabled="submitting">
-              {{ submitting ? 'Olusturuluyor...' : 'Kullanici olustur' }}
-            </button>
-          </div>
-
-          <p v-if="form.role !== Role.ADMIN && !form.organizationId" class="info-text">
-            Supervisor veya staff olusturmak icin bir kurum sec.
-          </p>
-          <p v-if="formError" class="error-text">{{ formError }}</p>
-          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
-        </form>
-      </section>
-
-      <section class="panel workspace-aside-card">
-        <div class="workspace-card-head">
-          <div>
-            <p class="eyebrow">Hizli gorunum</p>
-            <h2>Son eklenen hesaplar</h2>
-          </div>
-        </div>
-
-        <div class="workspace-stack-list">
-          <article v-for="user in recentUsers" :key="user.id" class="workspace-list-card">
-            <div>
-              <strong>{{ user.fullName }}</strong>
-              <span>{{ user.email }}</span>
-            </div>
-            <div class="workspace-chip-row">
-              <span class="auth-chip">{{ user.role }}</span>
-              <span class="status-pill" :class="{ approved: user.isActive, rejected: !user.isActive }">
-                {{ user.isActive ? 'Aktif' : 'Pasif' }}
-              </span>
-            </div>
-          </article>
-
-          <article v-if="recentUsers.length === 0" class="workspace-empty-card">
-            <strong>Henuz kullanici yok</strong>
-            <p>Soldaki form ile supervisor ya da staff hesaplarini olusturabilirsin.</p>
-          </article>
-        </div>
-      </section>
-    </div>
-
-    <section class="panel workspace-toolbar-card">
-      <div class="workspace-toolbar">
-        <label class="workspace-search">
-          <span>Ara</span>
-          <input v-model="searchTerm" type="text" placeholder="Ad, e-posta veya kurum ara..." />
+    <section class="users-directory-panel">
+      <div class="users-directory-toolbar">
+        <label class="users-search-field">
+          <span aria-hidden="true"></span>
+          <input v-model="searchTerm" type="text" placeholder="Kullanici, e-posta veya kurum ara" />
         </label>
 
-        <div class="workspace-toolbar-filters">
-          <label class="workspace-control compact">
+        <div class="users-toolbar-controls">
+          <label class="users-filter-card compact">
             <span>Rol</span>
             <select v-model="roleFilter">
               <option value="ALL">Tum roller</option>
@@ -394,35 +321,39 @@ function formatDate(value: string) {
               <option :value="Role.ADMIN">ADMIN</option>
             </select>
           </label>
+
+          <label class="users-filter-card compact">
+            <span>Durum</span>
+            <select v-model="statusFilter">
+              <option value="ALL">Tum durumlar</option>
+              <option value="ACTIVE">Aktif</option>
+              <option value="PASSIVE">Pasif</option>
+            </select>
+          </label>
         </div>
       </div>
-    </section>
 
-    <section class="panel workspace-table-card">
-      <div class="workspace-table-header">
+      <div class="users-directory-head">
         <div>
-          <p class="eyebrow">Kullanici listesi</p>
-          <h2>Filtrelenmis hesaplar</h2>
-          <p class="workspace-card-copy">
-            Tum kurumlarda ya da secili kurum scope'unda supervisor, staff ve global admin dagilimini izle.
-          </p>
+          <p class="eyebrow">Kullanicilar</p>
+          <h2>Hesap listesi</h2>
         </div>
+        <span class="users-count-pill">{{ filteredUsers.length }} kayit</span>
       </div>
 
-      <div v-if="pending" class="workspace-empty-card">
+      <div v-if="pending" class="users-empty-state">
         <p>Kullanicilar yukleniyor...</p>
       </div>
 
-      <div v-else-if="error" class="workspace-empty-card error-panel">
+      <div v-else-if="error" class="users-empty-state error-panel">
         <p>Kullanici listesi alinamadi.</p>
       </div>
 
-      <div v-else class="table-wrap workspace-table-wrap">
-        <table class="workspace-table users-table">
+      <div v-else class="users-table-wrap">
+        <table class="users-azure-table">
           <thead>
             <tr>
-              <th>Ad soyad</th>
-              <th>E-posta</th>
+              <th>Kullanici</th>
               <th>Rol</th>
               <th>Kurum</th>
               <th>Durum</th>
@@ -432,21 +363,26 @@ function formatDate(value: string) {
           <tbody>
             <tr v-for="user in filteredUsers" :key="user.id">
               <td>
-                <div class="workspace-cell-stack">
-                  <strong>{{ user.fullName }}</strong>
-                  <span>ID: {{ user.id.slice(0, 8) }}</span>
+                <div class="users-person-cell">
+                  <span class="users-avatar">{{ getInitials(user.fullName) }}</span>
+                  <span>
+                    <strong>{{ user.fullName }}</strong>
+                    <small>{{ user.email }}</small>
+                  </span>
                 </div>
               </td>
-              <td>{{ user.email }}</td>
-              <td><span class="auth-chip">{{ user.role }}</span></td>
               <td>
-                <div class="workspace-cell-stack">
+                <span class="users-role-pill">{{ user.role }}</span>
+              </td>
+              <td>
+                <div class="users-stack-cell">
                   <strong>{{ user.organization?.name ?? 'Global Admin' }}</strong>
-                  <span>{{ user.organization?.code ?? '-' }}</span>
+                  <small>{{ user.organization?.code ?? '-' }}</small>
                 </div>
               </td>
               <td>
-                <span class="status-pill" :class="{ approved: user.isActive, rejected: !user.isActive }">
+                <span class="users-status-pill" :class="{ active: user.isActive, passive: !user.isActive }">
+                  <span aria-hidden="true"></span>
                   {{ user.isActive ? 'Aktif' : 'Pasif' }}
                 </span>
               </td>
@@ -454,11 +390,101 @@ function formatDate(value: string) {
             </tr>
 
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="6">Secili filtrelerde kullanici yok.</td>
+              <td colspan="5">Secili filtrelerde kullanici yok.</td>
             </tr>
           </tbody>
         </table>
       </div>
     </section>
+
+    <div v-if="isCreateModalOpen" class="users-modal-backdrop" role="presentation" @click.self="closeCreateModal">
+      <section class="users-create-modal" role="dialog" aria-modal="true" aria-labelledby="createUserTitle">
+        <header class="users-modal-header">
+          <div>
+            <p class="eyebrow">Yeni kullanici</p>
+            <h2 id="createUserTitle">Hesap olustur</h2>
+          </div>
+          <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
+        </header>
+
+        <form class="users-modal-form" @submit.prevent="submit">
+          <div class="users-modal-grid">
+            <label>
+              <span>Rol</span>
+              <select id="userRole" v-model="form.role">
+                <option v-for="role in roleOptions" :key="role" :value="role">{{ role }}</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Durum</span>
+              <select id="userStatus" v-model="form.isActive">
+                <option :value="true">Aktif</option>
+                <option :value="false">Pasif</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>Kurum</span>
+            <select id="userOrganization" v-model="form.organizationId" :disabled="form.role === Role.ADMIN">
+              <option v-if="!organizationOptions.length" value="">Kurum yok</option>
+              <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
+                {{ organization.name }}
+              </option>
+            </select>
+          </label>
+
+          <label>
+            <span>Ad soyad</span>
+            <input
+              id="userFullName"
+              v-model="form.fullName"
+              type="text"
+              maxlength="160"
+              placeholder="Dr. Ayse Yilmaz"
+              required
+            />
+          </label>
+
+          <label>
+            <span>E-posta</span>
+            <input
+              id="userEmail"
+              v-model="form.email"
+              type="email"
+              maxlength="160"
+              placeholder="supervisor@example.com"
+              required
+            />
+          </label>
+
+          <label>
+            <span>Sifre</span>
+            <input
+              id="userPassword"
+              v-model="form.password"
+              type="password"
+              minlength="6"
+              placeholder="Admin123!"
+              required
+            />
+          </label>
+
+          <p v-if="form.role !== Role.ADMIN && !form.organizationId" class="info-text">
+            Supervisor veya staff icin kurum secimi zorunlu.
+          </p>
+          <p v-if="formError" class="error-text">{{ formError }}</p>
+          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
+
+          <div class="users-modal-actions">
+            <button class="button small" type="button" :disabled="submitting" @click="closeCreateModal">Vazgec</button>
+            <button class="button primary" type="submit" :disabled="submitting">
+              {{ submitting ? 'Olusturuluyor...' : 'Olustur' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   </section>
 </template>

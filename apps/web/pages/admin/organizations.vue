@@ -31,6 +31,12 @@ const form = reactive({
 const submitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
+const pageMessage = ref('');
+const isCreateModalOpen = ref(false);
+const searchTerm = ref('');
+const typeFilter = ref<'ALL' | OrganizationType>('ALL');
+const statusFilter = ref<'ALL' | 'ACTIVE' | 'PASSIVE'>('ALL');
+const telegramFilter = ref<'ALL' | 'ACTIVE' | 'PASSIVE'>('ALL');
 const telegramForms = reactive<
   Record<
     string,
@@ -46,39 +52,67 @@ const telegramForms = reactive<
 >({});
 
 const typeOptions = Object.values(OrganizationType);
+const typeLabels: Record<OrganizationType, string> = {
+  [OrganizationType.HOSPITAL]: 'Hastane',
+  [OrganizationType.CLINIC]: 'Klinik',
+  [OrganizationType.HOTEL]: 'Otel',
+  [OrganizationType.RESTAURANT]: 'Restoran',
+  [OrganizationType.GENERAL]: 'Genel'
+};
 
 const { data, pending, error, refresh } = await useAsyncData('organizations', () =>
   useApiFetch<ApiResponse<OrganizationItem[]>>('/organizations')
 );
 
 const organizations = computed(() => data.value?.data ?? []);
+const filteredOrganizations = computed(() =>
+  organizations.value.filter((organization) => {
+    const matchesType = typeFilter.value === 'ALL' ? true : organization.type === typeFilter.value;
+    const matchesStatus =
+      statusFilter.value === 'ALL'
+        ? true
+        : statusFilter.value === 'ACTIVE'
+          ? organization.isActive
+          : !organization.isActive;
+    const hasTelegram = organization.telegramEnabled && Boolean(organization.telegramChatId);
+    const matchesTelegram =
+      telegramFilter.value === 'ALL' ? true : telegramFilter.value === 'ACTIVE' ? hasTelegram : !hasTelegram;
+    const matchesSearch = !searchTerm.value.trim()
+      ? true
+      : `${organization.name} ${organization.code} ${organization.type}`
+          .toLocaleLowerCase('tr')
+          .includes(searchTerm.value.trim().toLocaleLowerCase('tr'));
+
+    return matchesType && matchesStatus && matchesTelegram && matchesSearch;
+  })
+);
 const summaryCards = computed(() => [
   {
     label: 'Toplam kurum',
     value: organizations.value.length,
-    detail: 'Platformda tanimli tenant sayisi.',
-    tone: 'indigo'
+    detail: 'Platformdaki tenant sayisi',
+    tone: 'blue'
   },
   {
     label: 'Aktif kurum',
     value: organizations.value.filter((organization) => organization.isActive).length,
-    detail: 'Operasyonel olarak acik kuruluslar.',
-    tone: 'teal'
+    detail: 'Operasyona acik',
+    tone: 'green'
   },
   {
-    label: 'Toplam kullanici',
+    label: 'Kullanici',
     value: organizations.value.reduce((total, organization) => total + organization._count.users, 0),
-    detail: 'Kurumlara atanmis hesaplar.',
-    tone: 'amber'
+    detail: 'Kurumlara bagli hesaplar',
+    tone: 'violet'
   },
   {
     label: 'Telegram aktif',
-    value: organizations.value.filter((organization) => organization.telegramEnabled && organization.telegramChatId).length,
-    detail: 'Grup bildirimi bagli kurum sayisi.',
-    tone: 'rose'
+    value: organizations.value.filter((organization) => organization.telegramEnabled && organization.telegramChatId)
+      .length,
+    detail: 'Bildirim kanali bagli',
+    tone: 'amber'
   }
 ]);
-const spotlightOrganizations = computed(() => organizations.value.slice(0, 4));
 
 watch(
   organizations,
@@ -106,9 +140,33 @@ watch(
   { immediate: true }
 );
 
+function openCreateModal() {
+  pageMessage.value = '';
+  formError.value = '';
+  formMessage.value = '';
+  isCreateModalOpen.value = true;
+}
+
+function closeCreateModal() {
+  if (submitting.value) {
+    return;
+  }
+
+  isCreateModalOpen.value = false;
+  formError.value = '';
+  formMessage.value = '';
+}
+
+function resetForm() {
+  form.name = '';
+  form.code = '';
+  form.type = OrganizationType.HOSPITAL;
+}
+
 async function submit() {
   formError.value = '';
   formMessage.value = '';
+  pageMessage.value = '';
   submitting.value = true;
 
   try {
@@ -121,10 +179,9 @@ async function submit() {
       }
     });
 
-    form.name = '';
-    form.code = '';
-    form.type = OrganizationType.HOSPITAL;
-    formMessage.value = 'Kurum olusturuldu.';
+    resetForm();
+    isCreateModalOpen.value = false;
+    pageMessage.value = 'Kurum olusturuldu.';
     await refresh();
   } catch (requestError) {
     formError.value = getApiErrorMessage(requestError, 'Kurum olusturulamadi.');
@@ -170,206 +227,273 @@ function formatDate(value: string) {
     timeStyle: 'short'
   }).format(new Date(value));
 }
+
+function getTypeLabel(type: OrganizationType) {
+  return typeLabels[type] ?? type;
+}
+
+function getTypeInitial(type: OrganizationType) {
+  return getTypeLabel(type).slice(0, 1).toLocaleUpperCase('tr');
+}
 </script>
 
 <template>
-  <section class="section workspace-shell">
-    <header class="workspace-hero workspace-hero-organizations">
-      <div class="workspace-title-block">
-        <p class="eyebrow">Multi-organization</p>
-        <h1>Kurumlar</h1>
-        <p class="lead">
-          Kurum portfoyunu, her kurumdaki kullanici yogunlugunu ve lokasyon kapsamini tek ekranda yonet.
-        </p>
+  <section class="section users-azure-page organizations-azure-page">
+    <header class="users-azure-header organizations-azure-header">
+      <div class="users-title-block">
+        <p class="eyebrow">Azure Directory</p>
+        <h1>Organizasyon Yonetimi</h1>
+        <p>Kurum portfoyu, bildirim kanallari ve operasyon baglantilari.</p>
       </div>
 
-      <div class="workspace-actions">
-        <button class="button secondary" type="button" @click="refresh">Yenile</button>
+      <div class="users-header-actions">
+        <button class="button primary users-create-button" type="button" @click="openCreateModal">
+          <span class="users-plus-icon" aria-hidden="true"></span>
+          Yeni kurum
+        </button>
+        <button class="button users-refresh-button" type="button" @click="refresh">Yenile</button>
       </div>
     </header>
 
-    <div class="workspace-metrics-grid">
+    <p v-if="pageMessage" class="success-text users-page-message">{{ pageMessage }}</p>
+
+    <div class="users-stat-grid organizations-stat-grid">
       <article
         v-for="card in summaryCards"
         :key="card.label"
-        class="metric-card"
+        class="users-stat-card"
         :class="`tone-${card.tone}`"
       >
         <span>{{ card.label }}</span>
         <strong>{{ card.value }}</strong>
-        <p>{{ card.detail }}</p>
+        <small>{{ card.detail }}</small>
       </article>
     </div>
 
-    <div class="workspace-grid workspace-grid-wide">
-      <section class="panel workspace-form-card">
-        <div class="workspace-card-head">
-          <div>
-            <p class="eyebrow">Yeni kurum</p>
-            <h2>Kurum olustur</h2>
-          </div>
-          <span class="workspace-badge">Blueprint baslangici</span>
-        </div>
+    <section class="users-directory-panel organizations-directory-panel">
+      <div class="users-directory-toolbar">
+        <label class="users-search-field">
+          <span aria-hidden="true"></span>
+          <input v-model="searchTerm" type="text" placeholder="Kurum adi, kod veya tur ara" />
+        </label>
 
-        <p class="workspace-card-copy">
-          Yeni tenant acildiginda kurumun kok lokasyonu otomatik olusur ve sonrasinda lokasyon, QR ve kullanici
-          akislari bu kurum scope'unda devam eder.
-        </p>
-
-        <form class="workspace-form-stack" @submit.prevent="submit">
-          <div>
-            <label for="organizationName">Kurum adi</label>
-            <input
-              id="organizationName"
-              v-model="form.name"
-              type="text"
-              maxlength="160"
-              placeholder="Ozel Hastane C"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="organizationCode">Kod</label>
-            <input
-              id="organizationCode"
-              v-model="form.code"
-              type="text"
-              maxlength="80"
-              placeholder="HOSPITAL_C"
-              required
-            />
-          </div>
-
-          <div>
-            <label for="organizationType">Tur</label>
-            <select id="organizationType" v-model="form.type">
-              <option v-for="type in typeOptions" :key="type" :value="type">{{ type }}</option>
+        <div class="users-toolbar-controls organizations-toolbar-controls">
+          <label class="users-filter-card compact">
+            <span>Tur</span>
+            <select v-model="typeFilter">
+              <option value="ALL">Tum turler</option>
+              <option v-for="type in typeOptions" :key="type" :value="type">{{ getTypeLabel(type) }}</option>
             </select>
-          </div>
+          </label>
 
-          <div class="form-actions">
-            <button class="button primary" type="submit" :disabled="submitting">
-              {{ submitting ? 'Olusturuluyor...' : 'Kurumu kaydet' }}
-            </button>
-          </div>
+          <label class="users-filter-card compact">
+            <span>Durum</span>
+            <select v-model="statusFilter">
+              <option value="ALL">Tum durumlar</option>
+              <option value="ACTIVE">Aktif</option>
+              <option value="PASSIVE">Pasif</option>
+            </select>
+          </label>
 
-          <p v-if="formError" class="error-text">{{ formError }}</p>
-          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
-        </form>
-      </section>
-
-      <section class="panel workspace-aside-card">
-        <div class="workspace-card-head">
-          <div>
-            <p class="eyebrow">Portfoy gorunumu</p>
-            <h2>En yogun kurumlar</h2>
-          </div>
+          <label class="users-filter-card compact">
+            <span>Telegram</span>
+            <select v-model="telegramFilter">
+              <option value="ALL">Tum kanallar</option>
+              <option value="ACTIVE">Aktif</option>
+              <option value="PASSIVE">Kapali</option>
+            </select>
+          </label>
         </div>
+      </div>
 
-        <div class="workspace-stack-list">
-          <article
-            v-for="organization in spotlightOrganizations"
-            :key="organization.id"
-            class="workspace-list-card"
-          >
-            <div>
-              <NuxtLink class="organization-link" :to="`/admin/locations?organizationId=${organization.id}`">
-                <strong>{{ organization.name }}</strong>
-              </NuxtLink>
-              <span>{{ organization.code }} · {{ organization.type }}</span>
-            </div>
-            <div class="workspace-chip-row">
-              <span class="status-pill" :class="{ approved: organization.isActive, rejected: !organization.isActive }">
-                {{ organization.isActive ? 'Aktif' : 'Pasif' }}
-              </span>
-              <span class="auth-chip">{{ organization._count.users }} kullanici</span>
-              <span class="auth-chip">{{ organization._count.locations }} lokasyon</span>
-            </div>
-          </article>
-
-          <article v-if="spotlightOrganizations.length === 0" class="workspace-empty-card">
-            <strong>Henuz kurum yok</strong>
-            <p>Soldaki form ile ilk kurumu olusturup lokasyon ve QR agacina gecebilirsin.</p>
-          </article>
+      <div class="users-directory-head">
+        <div>
+          <p class="eyebrow">Kurumlar</p>
+          <h2>Kurum listesi</h2>
         </div>
-      </section>
-    </div>
+        <span class="users-count-pill">{{ filteredOrganizations.length }} kayit</span>
+      </div>
 
-    <section class="panel workspace-table-card">
-      <div class="workspace-table-header">
+      <div v-if="pending" class="users-empty-state">
+        <p>Kurumlar yukleniyor...</p>
+      </div>
+
+      <div v-else-if="error" class="users-empty-state error-panel">
+        <p>Kurumlar alinamadi.</p>
+      </div>
+
+      <div v-else class="users-table-wrap">
+        <table class="users-azure-table organizations-azure-table">
+          <thead>
+            <tr>
+              <th>Kurum</th>
+              <th>Tur</th>
+              <th>Durum</th>
+              <th>Telegram</th>
+              <th>Kullanici</th>
+              <th>Lokasyon</th>
+              <th>Olusturulma</th>
+              <th>Aksiyon</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="organization in filteredOrganizations" :key="organization.id">
+              <td>
+                <div class="users-person-cell">
+                  <span
+                    class="users-avatar organizations-avatar"
+                    :class="`organizations-avatar--${organization.type.toLowerCase()}`"
+                  >
+                    {{ getTypeInitial(organization.type) }}
+                  </span>
+                  <span>
+                    <NuxtLink class="organization-link" :to="`/admin/locations?organizationId=${organization.id}`">
+                      <strong>{{ organization.name }}</strong>
+                    </NuxtLink>
+                    <small>{{ organization.code }}</small>
+                  </span>
+                </div>
+              </td>
+              <td>
+                <span class="users-role-pill organizations-type-pill">{{ getTypeLabel(organization.type) }}</span>
+              </td>
+              <td>
+                <span class="users-status-pill" :class="{ active: organization.isActive, passive: !organization.isActive }">
+                  <span aria-hidden="true"></span>
+                  {{ organization.isActive ? 'Aktif' : 'Pasif' }}
+                </span>
+              </td>
+              <td>
+                <span
+                  class="users-status-pill"
+                  :class="{
+                    active: organization.telegramEnabled && organization.telegramChatId,
+                    passive: !organization.telegramEnabled || !organization.telegramChatId
+                  }"
+                >
+                  <span aria-hidden="true"></span>
+                  {{ organization.telegramEnabled && organization.telegramChatId ? 'Aktif' : 'Kapali' }}
+                </span>
+              </td>
+              <td>{{ organization._count.users }}</td>
+              <td>{{ organization._count.locations }}</td>
+              <td>{{ formatDate(organization.createdAt) }}</td>
+              <td>
+                <div class="organizations-action-row">
+                  <NuxtLink
+                    class="button small organizations-action-button action-users"
+                    :to="`/admin/users?organizationId=${organization.id}`"
+                  >
+                    Kullanicilar
+                  </NuxtLink>
+                  <NuxtLink
+                    class="button small organizations-action-button action-tasks"
+                    :to="`/admin/tasks?organizationId=${organization.id}`"
+                  >
+                    Tasklar
+                  </NuxtLink>
+                  <NuxtLink
+                    class="button small organizations-action-button action-qr"
+                    :to="`/admin/qrs?organizationId=${organization.id}`"
+                  >
+                    QR
+                  </NuxtLink>
+                  <NuxtLink
+                    class="button small organizations-action-button action-locations"
+                    :to="`/admin/locations?organizationId=${organization.id}`"
+                  >
+                    Lokasyon
+                  </NuxtLink>
+                </div>
+              </td>
+            </tr>
+
+            <tr v-if="filteredOrganizations.length === 0">
+              <td colspan="8">Secili filtrelerde kurum yok.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="organizations-telegram-panel">
+      <div class="organizations-telegram-head">
         <div>
           <p class="eyebrow">Telegram</p>
           <h2>Kurum bildirim ayarlari</h2>
-          <p class="workspace-card-copy">
-            Yeni QR talepleri icin kurum bazli Telegram grup chat ID tanimla. Bot token API env uzerinden okunur.
-          </p>
+          <p>Yeni QR talepleri icin kurum bazli Telegram grup chat ID ve topic ID degerlerini yonet.</p>
         </div>
       </div>
 
-      <div v-if="pending" class="workspace-empty-card">
+      <div v-if="pending" class="users-empty-state">
         <p>Telegram ayarlari yukleniyor...</p>
       </div>
 
-      <div v-else-if="error" class="workspace-empty-card error-panel">
+      <div v-else-if="error" class="users-empty-state error-panel">
         <p>Telegram ayarlari alinamadi.</p>
       </div>
 
-      <div v-else class="telegram-settings-grid">
+      <div v-else class="organizations-telegram-grid">
         <article
           v-for="organization in organizations"
           :key="organization.id"
-          class="workspace-list-card telegram-settings-card"
+          class="organizations-telegram-card"
         >
-          <div class="telegram-settings-head">
-            <div>
+          <div class="organizations-telegram-card-head">
+            <div class="users-stack-cell">
               <strong>{{ organization.name }}</strong>
-              <span>{{ organization.code }}</span>
+              <small>{{ organization.code }}</small>
             </div>
             <span
-              class="status-pill"
-              :class="{ approved: organization.telegramEnabled && organization.telegramChatId, rejected: !organization.telegramEnabled }"
+              class="users-status-pill"
+              :class="{
+                active: organization.telegramEnabled && organization.telegramChatId,
+                passive: !organization.telegramEnabled || !organization.telegramChatId
+              }"
             >
+              <span aria-hidden="true"></span>
               {{ organization.telegramEnabled && organization.telegramChatId ? 'Telegram aktif' : 'Kapali' }}
             </span>
           </div>
 
           <form
             v-if="telegramForms[organization.id]"
-            class="telegram-settings-form"
+            class="organizations-telegram-form"
             @submit.prevent="saveTelegramSettings(organization)"
           >
-            <label class="telegram-toggle-row">
+            <label class="organizations-toggle-row">
               <input v-model="telegramForms[organization.id].telegramEnabled" type="checkbox" />
-              <span>Bu kurum icin Telegram bildirimi gonder</span>
+              <span>Telegram bildirimi gonder</span>
             </label>
 
-            <div class="telegram-settings-fields">
-              <div>
-                <label :for="`telegramChatId-${organization.id}`">Chat ID</label>
+            <div class="organizations-telegram-fields">
+              <label>
+                <span>Chat ID</span>
                 <input
-                  :id="`telegramChatId-${organization.id}`"
                   v-model="telegramForms[organization.id].telegramChatId"
                   type="text"
                   maxlength="120"
                   placeholder="-1001234567890"
                 />
-              </div>
+              </label>
 
-              <div>
-                <label :for="`telegramThreadId-${organization.id}`">Topic ID</label>
+              <label>
+                <span>Topic ID</span>
                 <input
-                  :id="`telegramThreadId-${organization.id}`"
                   v-model="telegramForms[organization.id].telegramNotificationThreadId"
                   type="text"
                   maxlength="80"
                   placeholder="Opsiyonel"
                 />
-              </div>
+              </label>
             </div>
 
-            <div class="form-actions">
-              <button class="button small" type="submit" :disabled="telegramForms[organization.id].submitting">
+            <div class="organizations-telegram-actions">
+              <button
+                class="button small organizations-telegram-save"
+                type="submit"
+                :disabled="telegramForms[organization.id].submitting"
+              >
                 {{ telegramForms[organization.id].submitting ? 'Kaydediliyor...' : 'Kaydet' }}
               </button>
             </div>
@@ -383,88 +507,67 @@ function formatDate(value: string) {
           </form>
         </article>
 
-        <article v-if="organizations.length === 0" class="workspace-empty-card">
-          <strong>Henuz kurum yok</strong>
+        <article v-if="organizations.length === 0" class="users-empty-state">
           <p>Telegram ayari icin once kurum olustur.</p>
         </article>
       </div>
     </section>
 
-    <section class="panel workspace-table-card">
-      <div class="workspace-table-header">
-        <div>
-          <p class="eyebrow">Kurum listesi</p>
-          <h2>Kayitli organizationlar</h2>
-          <p class="workspace-card-copy">
-            Her kurum satirindan kullanici, task, QR ve lokasyon yonetim ekranlarina dogrudan gecis yapabilirsin.
-          </p>
-        </div>
-      </div>
+    <div v-if="isCreateModalOpen" class="users-modal-backdrop" role="presentation" @click.self="closeCreateModal">
+      <section class="users-create-modal" role="dialog" aria-modal="true" aria-labelledby="createOrganizationTitle">
+        <header class="users-modal-header">
+          <div>
+            <p class="eyebrow">Yeni kurum</p>
+            <h2 id="createOrganizationTitle">Kurum olustur</h2>
+          </div>
+          <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
+        </header>
 
-      <div v-if="pending" class="workspace-empty-card">
-        <p>Kurumlar yukleniyor...</p>
-      </div>
+        <form class="users-modal-form" @submit.prevent="submit">
+          <label>
+            <span>Kurum adi</span>
+            <input
+              id="organizationName"
+              v-model="form.name"
+              type="text"
+              maxlength="160"
+              placeholder="Ozel Hastane C"
+              required
+            />
+          </label>
 
-      <div v-else-if="error" class="workspace-empty-card error-panel">
-        <p>Kurumlar alinamadi.</p>
-      </div>
+          <div class="users-modal-grid">
+            <label>
+              <span>Kod</span>
+              <input
+                id="organizationCode"
+                v-model="form.code"
+                type="text"
+                maxlength="80"
+                placeholder="HOSPITAL_C"
+                required
+              />
+            </label>
 
-      <div v-else class="table-wrap workspace-table-wrap">
-        <table class="workspace-table organizations-table">
-          <thead>
-            <tr>
-              <th>Kurum</th>
-              <th>Tur</th>
-              <th>Durum</th>
-              <th>Kullanicilar</th>
-              <th>Lokasyonlar</th>
-              <th>Olusturulma</th>
-              <th>Aksiyon</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="organization in organizations" :key="organization.id">
-              <td>
-                <div class="workspace-cell-stack">
-                  <NuxtLink class="organization-link" :to="`/admin/locations?organizationId=${organization.id}`">
-                    <strong>{{ organization.name }}</strong>
-                  </NuxtLink>
-                  <span>{{ organization.code }}</span>
-                </div>
-              </td>
-              <td><span class="auth-chip">{{ organization.type }}</span></td>
-              <td>
-                <span class="status-pill" :class="{ approved: organization.isActive, rejected: !organization.isActive }">
-                  {{ organization.isActive ? 'Aktif' : 'Pasif' }}
-                </span>
-              </td>
-              <td>{{ organization._count.users }}</td>
-              <td>{{ organization._count.locations }}</td>
-              <td>{{ formatDate(organization.createdAt) }}</td>
-              <td>
-                <div class="workspace-chip-row">
-                  <NuxtLink class="button small" :to="`/admin/users?organizationId=${organization.id}`">
-                    Kullanicilar
-                  </NuxtLink>
-                  <NuxtLink class="button small" :to="`/admin/tasks?organizationId=${organization.id}`">
-                    Tasklar
-                  </NuxtLink>
-                  <NuxtLink class="button small" :to="`/admin/qrs?organizationId=${organization.id}`">
-                    QR yonet
-                  </NuxtLink>
-                  <NuxtLink class="button small" :to="`/admin/locations?organizationId=${organization.id}`">
-                    Lokasyon yonet
-                  </NuxtLink>
-                </div>
-              </td>
-            </tr>
+            <label>
+              <span>Tur</span>
+              <select id="organizationType" v-model="form.type">
+                <option v-for="type in typeOptions" :key="type" :value="type">{{ getTypeLabel(type) }}</option>
+              </select>
+            </label>
+          </div>
 
-            <tr v-if="organizations.length === 0">
-              <td colspan="7">Henuz organization yok.</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
+          <p v-if="formError" class="error-text">{{ formError }}</p>
+          <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
+
+          <div class="users-modal-actions">
+            <button class="button small" type="button" :disabled="submitting" @click="closeCreateModal">Vazgec</button>
+            <button class="button primary" type="submit" :disabled="submitting">
+              {{ submitting ? 'Olusturuluyor...' : 'Olustur' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
   </section>
 </template>
