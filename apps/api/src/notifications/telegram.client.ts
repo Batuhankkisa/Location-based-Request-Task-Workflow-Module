@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 type SendMessageInput = {
   chatId: string;
   messageThreadId?: number;
+  replyToMessageId?: number;
   text: string;
 };
 
@@ -17,6 +18,11 @@ export class TelegramClient {
 
     if (typeof input.messageThreadId === 'number') {
       body.message_thread_id = input.messageThreadId;
+    }
+
+    if (typeof input.replyToMessageId === 'number') {
+      body.reply_to_message_id = input.replyToMessageId;
+      body.allow_sending_without_reply = true;
     }
 
     const controller = new AbortController();

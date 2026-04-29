@@ -25,7 +25,8 @@ interface LocationNode {
   id: string;
   name: string;
   code: string;
-  type: string;
+  type: LocationType | string;
+  organization?: OrganizationOption;
   qrCodes: QrCodeSummary[];
   children: LocationNode[];
 }
@@ -98,15 +99,6 @@ const { data, pending, error, refresh } = await useAsyncData(
 );
 
 const locations = computed(() => data.value?.data ?? []);
-const currentOrganizationLabel = computed(() => {
-  if (canSelectOrganization.value) {
-    return selectedOrganizationId.value === 'ALL'
-      ? 'Tum kurumlar'
-      : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Secili kurum';
-  }
-
-  return auth.user.value?.organization?.name ?? 'Kurum tanimsiz';
-});
 const parentOptions = computed<LocationOption[]>(() => {
   const items: LocationOption[] = [];
 
@@ -337,24 +329,5 @@ function resetLocationForm() {
         <p v-else class="tree-state">Henuz lokasyon yok.</p>
       </section>
     </div>
-
-    <section class="panel location-note-card">
-      <p class="eyebrow">Agac notu</p>
-      <h2>Kurum kokunu koru</h2>
-      <div class="section">
-        <p>
-          Her kurum olusurken kok `ORGANIZATION` lokasyonu otomatik acilir. Yeni kayitlar bu kokun veya alt
-          duzumlerin altina eklenir.
-        </p>
-        <p>
-          Oda icin genelde parent olarak kat secilir. Alan veya servis bolumu gibi esnek yapilar icin `AREA`
-          kullanabilirsin.
-        </p>
-        <p>
-          Staff kullanicilar bu sayfada agaci gorebilir ama yeni lokasyon acamaz.
-        </p>
-        <p class="muted">{{ currentOrganizationLabel }}</p>
-      </div>
-    </section>
   </section>
 </template>

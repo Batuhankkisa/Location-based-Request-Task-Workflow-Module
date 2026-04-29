@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { TaskStatus } from '@lbrtw/shared';
 import { Prisma, TaskStatus as PrismaTaskStatus } from '@prisma/client';
 import { ApprovalsService } from '../approvals/approvals.service';
@@ -98,6 +98,91 @@ export class TasksService {
     });
   }
 
+  async completeFromTelegram(input: {
+    taskId: string;
+    chatId: string;
+    messageThreadId?: number;
+    actor: string;
+    note?: string;
+  }) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: input.taskId },
+      include: {
+        location: {
+          include: {
+            organization: true
+          }
+        }
+      }
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const organization = task.location.organization;
+    if (!organization.telegramEnabled || !organization.telegramChatId) {
+      throw new ForbiddenException('Telegram is not enabled for this task organization');
+    }
+
+    if (organization.telegramChatId.trim() !== input.chatId.trim()) {
+      throw new ForbiddenException('Telegram chat is not allowed for this task organization');
+    }
+
+    const configuredThreadId = this.parseOptionalInteger(organization.telegramNotificationThreadId);
+    if (typeof configuredThreadId === 'number' && configuredThreadId !== input.messageThreadId) {
+      throw new ForbiddenException('Telegram topic is not allowed for this task organization');
+    }
+
+    if (task.status === PrismaTaskStatus.DONE_WAITING_APPROVAL) {
+      return {
+        task,
+        changed: false
+      };
+    }
+
+    if (task.status === PrismaTaskStatus.APPROVED || task.status === PrismaTaskStatus.REJECTED) {
+      throw new BadRequestException(`Task is already ${task.status}`);
+    }
+
+    const nextStatus = PrismaTaskStatus.DONE_WAITING_APPROVAL;
+    const updatedTask = await this.prisma.$transaction(async (tx) => {
+      await tx.task.update({
+        where: { id: input.taskId },
+        data: {
+          assignedTo: task.assignedTo ?? input.actor,
+          completedBy: input.actor,
+          completedAt: new Date(),
+          status: nextStatus
+        }
+      });
+
+      await tx.taskHistory.create({
+        data: {
+          taskId: input.taskId,
+          fromStatus: task.status,
+          toStatus: nextStatus,
+          note: input.note ?? 'Task completed from Telegram command',
+          changedBy: input.actor
+        }
+      });
+
+      return tx.task.findUnique({
+        where: { id: input.taskId },
+        include: taskDetailInclude
+      });
+    });
+
+    if (!updatedTask) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return {
+      task: updatedTask,
+      changed: true
+    };
+  }
+
   approve(id: string, dto: TransitionTaskDto, user: AuthenticatedUser) {
     const actor = this.actorLabel(user);
 
@@ -184,6 +269,20 @@ export class TasksService {
   private clean(value?: string): string | undefined {
     const cleanValue = value?.trim();
     return cleanValue ? cleanValue : undefined;
+  }
+
+  private parseOptionalInteger(value: string | null) {
+    const cleanValue = value?.trim();
+    if (!cleanValue) {
+      return undefined;
+    }
+
+    const parsed = Number(cleanValue);
+    if (!Number.isInteger(parsed)) {
+      throw new BadRequestException(`Invalid Telegram thread id: ${cleanValue}`);
+    }
+
+    return parsed;
   }
 
   private actorLabel(user: AuthenticatedUser) {

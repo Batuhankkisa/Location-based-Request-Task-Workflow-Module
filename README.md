@@ -285,6 +285,8 @@ Davranis:
 - bot token tek merkezidir ve sadece env'den okunur: `TELEGRAM_BOT_TOKEN`
 - chat ayari organization seviyesindedir: `telegramEnabled`, `telegramChatId`, `telegramNotificationThreadId`
 - `telegramNotificationThreadId` forum/topic kullanan Telegram gruplari icin opsiyoneldir
+- Telegram webhook aktifse bot bildirimine `yapildi` veya `yapıldı` diye cevap vermek task'i `DONE_WAITING_APPROVAL` durumuna alir
+- webhook secret opsiyoneldir: `TELEGRAM_WEBHOOK_SECRET`
 - Telegram hatasi ana akis icin fail sayilmaz; request, task, task history, media ve scan log kayitlari korunur
 - hata API loglarina yazilir
 
@@ -307,6 +309,9 @@ Kurulum:
 4. Grubun `chat_id` degerini al. Supergroup ID'leri genelde `-100...` ile baslar.
 5. Admin web'de `/admin/organizations` ekranindan ilgili kurum icin `Telegram bildirimi gonder` secenegini ac, `Chat ID` alanini doldur ve kaydet.
 6. Forum topic kullaniyorsan `Topic ID` alanina Telegram `message_thread_id` degerini gir.
+7. Komutla task kapatmak icin webhook'u public API adresine bagla:
+   `https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<API_PUBLIC_URL>/telegram/webhook`
+8. Secret kullanacaksan ayni webhook kurulumuna `secret_token=<TELEGRAM_WEBHOOK_SECRET>` ekle ve API env'inde ayni degeri tanimla.
 
 ## Prisma ve migration
 
@@ -399,9 +404,10 @@ Adresler:
 8. `staff.b@example.com / Admin123!` ile giris yap, sadece Hastane B tasklarini gordugunu kontrol et
 9. `supervisor.a@example.com` ile Hastane A tasklari icin `approve/reject` dene
 10. `admin@example.com` ile `/admin/organizations`, `/admin/tasks`, `/admin/qrs`, `/admin/locations` ekranlarinda organization seciciyi test et
-11. Telegram testi icin `.env` icinde `TELEGRAM_BOT_TOKEN` ve `ADMIN_WEB_BASE_URL` tanimla
+11. Telegram testi icin `.env` icinde `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` ve `ADMIN_WEB_BASE_URL` tanimla
 12. `/admin/organizations` ekraninda test kurumuna `telegramChatId` bagla ve Telegram'i aktif et
 13. `http://localhost:3000/q/room-401-demo-token` uzerinden talep olustur; talep/task olusurken Telegram grubuna mesaj dustugunu kontrol et
+14. Bot bildirimine `yapildi` diye cevap ver; task'in `DONE_WAITING_APPROVAL` durumuna gectigini kontrol et
 
 ## Staging / Render test akisi
 
