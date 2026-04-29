@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   View
@@ -18,8 +19,8 @@ export function LoginScreen() {
   const authError = useAuthStore((state) => state.error);
   const clearError = useAuthStore((state) => state.clearError);
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@example.com');
+  const [password, setPassword] = useState('Admin123!');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const isLoading = status === 'loading';
@@ -43,34 +44,23 @@ export function LoginScreen() {
 
   return (
     <ScreenContainer scrollable contentContainerStyle={styles.content}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>LBRTW Mobile</Text>
-          <Text style={styles.title}>Personel Girisi</Text>
-          <Text style={styles.subtitle}>
-            Mevcut auth contract ile ayni API uzerinden gorev ve QR akisina baglanir.
-          </Text>
-        </View>
-
-        <View style={styles.locationCard}>
-          <Text style={styles.locationLabel}>API BAGLANTISI</Text>
-          <Text style={styles.locationValue}>{API_BASE_URL}</Text>
-          <Text style={styles.locationHint}>
-            Telefonda test edeceksen localhost yerine bilgisayarinin local IP adresini gir.
-          </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardArea}>
+        <View style={styles.brand}>
+          <View style={styles.brandIcon}>
+            <Text style={styles.brandIconText}>N</Text>
+          </View>
+          <Text style={styles.brandTitle}>Nexus</Text>
+          <Text style={styles.brandSubtitle}>Enterprise Portal</Text>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Login</Text>
-          <Text style={styles.formDescription}>
-            Admin, supervisor ve staff kullanicilari ayni ekrandan giris yapar.
-          </Text>
+          <Text style={styles.formTitle}>Hesabiniza Giris Yapin</Text>
 
           <AppInput
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
-            label="Email"
+            label="E-POSTA ADRESI"
             onChangeText={(value) => {
               clearError();
               setValidationError(null);
@@ -83,7 +73,7 @@ export function LoginScreen() {
           <AppInput
             autoCapitalize="none"
             autoCorrect={false}
-            label="Sifre"
+            label="SIFRE"
             onChangeText={(value) => {
               clearError();
               setValidationError(null);
@@ -94,14 +84,22 @@ export function LoginScreen() {
             value={password}
           />
 
+          <View style={styles.loginActionRow}>
+            <Pressable disabled style={styles.rememberMe}>
+              <View style={styles.checkbox} />
+              <Text style={styles.actionText}>Beni Hatirla</Text>
+            </Pressable>
+            <Text style={styles.actionText}>Sifremi Unuttum?</Text>
+          </View>
+
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-          <AppButton label="Giris Yap" loading={isLoading} onPress={handleSubmit} />
+          <AppButton label={isLoading ? 'Giris yapiliyor...' : 'Giris yap'} loading={isLoading} onPress={handleSubmit} />
 
-          <Text style={styles.footnote}>
-            Bu ilk surumde refresh token yok. Access token SecureStore icinde saklanir.
-          </Text>
+          <Text style={styles.apiHint}>API: {API_BASE_URL}</Text>
         </View>
+
+        <Text style={styles.footer}>© 2026 Nexus Enterprise. Tum haklari saklidir.</Text>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -109,57 +107,42 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    justifyContent: 'center',
+    justifyContent: 'center'
+  },
+  keyboardArea: {
     gap: LAYOUT.sectionGap
   },
-  hero: {
-    backgroundColor: COLORS.heading,
-    borderRadius: 30,
-    padding: 24,
-    gap: 8
+  brand: {
+    alignItems: 'center',
+    gap: 7,
+    paddingBottom: 8
   },
-  eyebrow: {
-    color: '#b8c7ec',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase'
+  brandIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.heading
   },
-  title: {
+  brandIconText: {
     color: COLORS.surface,
+    fontSize: 25,
+    fontWeight: '800'
+  },
+  brandTitle: {
+    color: COLORS.heading,
     fontSize: 34,
     fontWeight: '800'
   },
-  subtitle: {
-    color: '#d7e1ff',
-    fontSize: 15,
-    lineHeight: 22
-  },
-  locationCard: {
-    backgroundColor: '#e5ecff',
-    borderRadius: 22,
-    padding: 18,
-    gap: 6
-  },
-  locationLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#5570a5',
-    letterSpacing: 0.4
-  },
-  locationValue: {
-    color: COLORS.heading,
+  brandSubtitle: {
+    color: COLORS.textMuted,
     fontSize: 15,
     fontWeight: '700'
   },
-  locationHint: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    lineHeight: 18
-  },
   formCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 30,
+    borderRadius: 24,
     padding: 22,
     gap: 16,
     borderWidth: 1,
@@ -167,23 +150,49 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     color: COLORS.heading,
-    fontSize: 24,
-    fontWeight: '800'
+    fontSize: 25,
+    fontWeight: '800',
+    marginBottom: 4
   },
-  formDescription: {
+  loginActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14
+  },
+  rememberMe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceMuted
+  },
+  actionText: {
     color: COLORS.textMuted,
-    fontSize: 14,
-    lineHeight: 21
+    fontSize: 13,
+    fontWeight: '700'
   },
   errorText: {
     color: COLORS.danger,
     fontSize: 14,
     fontWeight: '600'
   },
-  footnote: {
+  apiHint: {
     color: COLORS.textMuted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center'
+  },
+  footer: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
     textAlign: 'center'
   }
 });

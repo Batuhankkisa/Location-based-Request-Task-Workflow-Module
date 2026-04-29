@@ -5,6 +5,22 @@ export function canSeeQrModule(role?: Role | null) {
   return role === Role.ADMIN || role === Role.SUPERVISOR;
 }
 
+export function canSeeLocationsModule(role?: Role | null) {
+  return role === Role.ADMIN || role === Role.SUPERVISOR;
+}
+
+export function canManageOrganizations(role?: Role | null) {
+  return role === Role.ADMIN;
+}
+
+export function canManageUsers(role?: Role | null) {
+  return role === Role.ADMIN;
+}
+
+export function canAccessMobileApp(role?: Role | null) {
+  return role === Role.ADMIN || role === Role.SUPERVISOR;
+}
+
 export function canReviewTask(role?: Role | null) {
   return role === Role.ADMIN || role === Role.SUPERVISOR;
 }

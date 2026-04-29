@@ -4,12 +4,15 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Role } from '@lbrtw/shared';
 import { COLORS } from '../utils/constants';
-import { canSeeQrModule } from '../utils/role';
+import { canManageOrganizations, canManageUsers, canSeeLocationsModule, canSeeQrModule } from '../utils/role';
+import { LocationsScreen } from '../screens/locations/LocationsScreen';
+import { OrganizationsScreen } from '../screens/organizations/OrganizationsScreen';
 import { ProfileScreen } from '../screens/profile/ProfileScreen';
 import { QrDetailScreen } from '../screens/qrs/QrDetailScreen';
 import { QrListScreen } from '../screens/qrs/QrListScreen';
 import { TaskDetailScreen } from '../screens/tasks/TaskDetailScreen';
 import { TaskListScreen } from '../screens/tasks/TaskListScreen';
+import { UsersScreen } from '../screens/users/UsersScreen';
 import { useAuthStore } from '../store/authStore';
 import type { AppTabParamList, QrsStackParamList, TasksStackParamList } from './types';
 
@@ -59,14 +62,14 @@ export function AppNavigator() {
         tabBarActiveTintColor: COLORS.heading,
         tabBarInactiveTintColor: '#8b98b8',
         tabBarStyle: {
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 10,
+          height: 76,
+          paddingBottom: 8,
+          paddingTop: 8,
           backgroundColor: COLORS.surface,
           borderTopColor: COLORS.border
         },
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 10,
           fontWeight: '600'
         },
         tabBarIcon: ({ color, size }) => (
@@ -78,7 +81,7 @@ export function AppNavigator() {
         name="TasksTab"
         component={TasksStackNavigator}
         options={{
-          title: 'Gorevler'
+          title: 'Talepler'
         }}
       />
       {canSeeQrModule(role) ? (
@@ -87,6 +90,33 @@ export function AppNavigator() {
           component={QrsStackNavigator}
           options={{
             title: 'QRlar'
+          }}
+        />
+      ) : null}
+      {canSeeLocationsModule(role) ? (
+        <Tab.Screen
+          name="LocationsTab"
+          component={LocationsScreen}
+          options={{
+            title: 'Lokasyon'
+          }}
+        />
+      ) : null}
+      {canManageOrganizations(role) ? (
+        <Tab.Screen
+          name="OrganizationsTab"
+          component={OrganizationsScreen}
+          options={{
+            title: 'Kurumlar'
+          }}
+        />
+      ) : null}
+      {canManageUsers(role) ? (
+        <Tab.Screen
+          name="UsersTab"
+          component={UsersScreen}
+          options={{
+            title: 'Kisiler'
           }}
         />
       ) : null}
@@ -107,6 +137,12 @@ function getTabIconName(routeName: keyof AppTabParamList): keyof typeof Ionicons
       return 'list-circle-outline';
     case 'QrsTab':
       return 'qr-code-outline';
+    case 'LocationsTab':
+      return 'git-network-outline';
+    case 'OrganizationsTab':
+      return 'business-outline';
+    case 'UsersTab':
+      return 'people-outline';
     case 'ProfileTab':
       return 'person-circle-outline';
     default:

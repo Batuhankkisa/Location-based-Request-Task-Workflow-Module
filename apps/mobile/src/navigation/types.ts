@@ -19,5 +19,8 @@ export type QrsStackParamList = {
 export type AppTabParamList = {
   TasksTab: undefined;
   QrsTab: undefined;
+  LocationsTab: undefined;
+  OrganizationsTab: undefined;
+  UsersTab: undefined;
   ProfileTab: undefined;
 };

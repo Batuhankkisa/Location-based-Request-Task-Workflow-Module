@@ -1,6 +1,6 @@
-# Mobile App
+# Supervisor/Admin Mobile App
 
-Expo tabanli mobil uygulama iskeleti `apps/mobile` altindadir. Bu paket mevcut `apps/api` auth ve task/qr endpointlerini kullanacak sekilde hazirlandi.
+Expo tabanli supervisor/admin mobil uygulamasi `apps/mobile` altindadir. Bu paket mevcut `apps/api` auth ve task/qr endpointlerini kullanacak sekilde hazirlandi.
 
 ## Kurulum
 
@@ -95,17 +95,18 @@ pnpm dev:mobile
 
 ## Ekranlar
 
-- `LoginScreen`
-- `TaskListScreen`
-- `TaskDetailScreen`
-- `QrListScreen`
-- `QrDetailScreen`
-- `ProfileScreen`
+- Login
+- Gorev listesi
+- Gorev detayi ve status aksiyonlari
+- QR listesi
+- QR detayi, scan loglari ve admin activate/deactivate aksiyonu
+- Profil ve cikis
 
 ## Notlar
 
 - Auth token `Expo SecureStore` icinde tutulur.
 - App acilisinda token varsa `/auth/me` ile oturum hydrate edilir.
-- STAFF kullanicilar approve/reject ve QR activate/deactivate aksiyonlarini goremez.
-- SUPERVISOR QR modulu gorur ama activate/deactivate goremez.
-- ADMIN tum mobil modulleri gorur.
+- Mobil uygulama girisi ADMIN ve SUPERVISOR rolleriyle sinirlidir.
+- SUPERVISOR gorev onay/red aksiyonlarini ve QR modulunu gorur.
+- ADMIN tum mobil modulleri ve QR activate/deactivate aksiyonlarini gorur.
+- STAFF hesabi ile giris yapilirsa uygulama icerigi yerine yetki mesaji ve cikis aksiyonu gosterilir.
