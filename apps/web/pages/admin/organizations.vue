@@ -26,13 +26,15 @@ interface OrganizationItem {
 const form = reactive({
   name: '',
   code: '',
-  type: OrganizationType.HOSPITAL
+  type: OrganizationType.HOSPITAL,
+  isActive: true
 });
 const submitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
 const pageMessage = ref('');
 const isCreateModalOpen = ref(false);
+const editingOrganization = ref<OrganizationItem | null>(null);
 const searchTerm = ref('');
 const typeFilter = ref<'ALL' | OrganizationType>('ALL');
 const statusFilter = ref<'ALL' | 'ACTIVE' | 'PASSIVE'>('ALL');
@@ -52,6 +54,7 @@ const telegramForms = reactive<
 >({});
 
 const typeOptions = Object.values(OrganizationType);
+const isEditMode = computed(() => Boolean(editingOrganization.value));
 const typeLabels: Record<OrganizationType, string> = {
   [OrganizationType.HOSPITAL]: 'Hastane',
   [OrganizationType.CLINIC]: 'Klinik',
@@ -144,6 +147,20 @@ function openCreateModal() {
   pageMessage.value = '';
   formError.value = '';
   formMessage.value = '';
+  editingOrganization.value = null;
+  resetForm();
+  isCreateModalOpen.value = true;
+}
+
+function openEditModal(organization: OrganizationItem) {
+  pageMessage.value = '';
+  formError.value = '';
+  formMessage.value = '';
+  editingOrganization.value = organization;
+  form.name = organization.name;
+  form.code = organization.code;
+  form.type = organization.type;
+  form.isActive = organization.isActive;
   isCreateModalOpen.value = true;
 }
 
@@ -153,6 +170,7 @@ function closeCreateModal() {
   }
 
   isCreateModalOpen.value = false;
+  editingOrganization.value = null;
   formError.value = '';
   formMessage.value = '';
 }
@@ -161,6 +179,7 @@ function resetForm() {
   form.name = '';
   form.code = '';
   form.type = OrganizationType.HOSPITAL;
+  form.isActive = true;
 }
 
 async function submit() {
@@ -170,21 +189,29 @@ async function submit() {
   submitting.value = true;
 
   try {
-    await useApiFetch<ApiResponse<OrganizationItem>>('/organizations', {
-      method: 'POST',
+    await useApiFetch<ApiResponse<OrganizationItem>>(
+      isEditMode.value ? `/organizations/${editingOrganization.value?.id}` : '/organizations',
+      {
+      method: isEditMode.value ? 'PATCH' : 'POST',
       body: {
         name: form.name,
         code: form.code,
-        type: form.type
+        type: form.type,
+        isActive: form.isActive
       }
     });
 
+    const wasEditMode = isEditMode.value;
     resetForm();
     isCreateModalOpen.value = false;
-    pageMessage.value = 'Kurum olusturuldu.';
+    editingOrganization.value = null;
+    pageMessage.value = wasEditMode ? 'Kurum guncellendi.' : 'Kurum olusturuldu.';
     await refresh();
   } catch (requestError) {
-    formError.value = getApiErrorMessage(requestError, 'Kurum olusturulamadi.');
+    formError.value = getApiErrorMessage(
+      requestError,
+      isEditMode.value ? 'Kurum guncellenemedi.' : 'Kurum olusturulamadi.'
+    );
   } finally {
     submitting.value = false;
   }
@@ -404,6 +431,13 @@ function getTypeInitial(type: OrganizationType) {
                   >
                     Lokasyon
                   </NuxtLink>
+                  <button
+                    class="button small organizations-action-button"
+                    type="button"
+                    @click="openEditModal(organization)"
+                  >
+                    Duzenle
+                  </button>
                 </div>
               </td>
             </tr>
@@ -517,8 +551,8 @@ function getTypeInitial(type: OrganizationType) {
       <section class="users-create-modal" role="dialog" aria-modal="true" aria-labelledby="createOrganizationTitle">
         <header class="users-modal-header">
           <div>
-            <p class="eyebrow">Yeni kurum</p>
-            <h2 id="createOrganizationTitle">Kurum olustur</h2>
+            <p class="eyebrow">{{ isEditMode ? 'Kurum duzenle' : 'Yeni kurum' }}</p>
+            <h2 id="createOrganizationTitle">{{ isEditMode ? 'Kurum guncelle' : 'Kurum olustur' }}</h2>
           </div>
           <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
         </header>
@@ -555,6 +589,14 @@ function getTypeInitial(type: OrganizationType) {
                 <option v-for="type in typeOptions" :key="type" :value="type">{{ getTypeLabel(type) }}</option>
               </select>
             </label>
+
+            <label>
+              <span>Durum</span>
+              <select id="organizationStatus" v-model="form.isActive">
+                <option :value="true">Aktif</option>
+                <option :value="false">Pasif</option>
+              </select>
+            </label>
           </div>
 
           <p v-if="formError" class="error-text">{{ formError }}</p>
@@ -563,7 +605,7 @@ function getTypeInitial(type: OrganizationType) {
           <div class="users-modal-actions">
             <button class="button small" type="button" :disabled="submitting" @click="closeCreateModal">Vazgec</button>
             <button class="button primary" type="submit" :disabled="submitting">
-              {{ submitting ? 'Olusturuluyor...' : 'Olustur' }}
+              {{ submitting ? 'Kaydediliyor...' : isEditMode ? 'Guncelle' : 'Olustur' }}
             </button>
           </div>
         </form>

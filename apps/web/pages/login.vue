@@ -9,17 +9,22 @@ if (existingUser) {
 
 const email = ref('admin@example.com');
 const password = ref('Admin123!');
+const rememberMe = ref(true);
 const formError = ref('');
+const helpMessage = ref('');
 const submitting = ref(false);
 
 async function submit() {
   formError.value = '';
+  helpMessage.value = '';
   submitting.value = true;
 
   try {
     await auth.login({
       email: email.value,
       password: password.value
+    }, {
+      remember: rememberMe.value
     });
 
     await navigateTo(typeof route.query.redirect === 'string' ? route.query.redirect : '/admin/tasks');
@@ -28,6 +33,11 @@ async function submit() {
   } finally {
     submitting.value = false;
   }
+}
+
+function showPasswordHelp() {
+  formError.value = '';
+  helpMessage.value = 'Sifre yenileme icin sistem yoneticisinden kullanici kartindan yeni sifre belirlemesini iste.';
 }
 </script>
 
@@ -57,10 +67,10 @@ async function submit() {
 
         <div class="login-action-row">
           <label class="remember-me">
-            <input type="checkbox" disabled />
+            <input v-model="rememberMe" type="checkbox" />
             <span>Beni Hatırla</span>
           </label>
-          <span>Şifremi Unuttum?</span>
+          <button class="login-help-button" type="button" @click="showPasswordHelp">Şifremi Unuttum?</button>
         </div>
 
         <div class="form-actions">
@@ -70,6 +80,7 @@ async function submit() {
         </div>
 
         <p v-if="formError" class="error-text">{{ formError }}</p>
+        <p v-if="helpMessage" class="info-text">{{ helpMessage }}</p>
       </form>
     </div>
 

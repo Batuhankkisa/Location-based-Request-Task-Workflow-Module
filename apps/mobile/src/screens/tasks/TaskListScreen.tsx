@@ -16,7 +16,6 @@ import type { TaskListItem } from '../../types/task';
 import { formatDateTime, formatRelativeLabel } from '../../utils/date';
 import { COLORS, LAYOUT, TASK_STATUS_META } from '../../utils/constants';
 import { TaskStatus } from '@lbrtw/shared';
-import { showUnavailableAction } from '../../utils/alerts';
 import type { TasksStackParamList } from '../../navigation/types';
 import { matchesSearchTerm } from '../../utils/search';
 
@@ -113,12 +112,8 @@ export function TaskListScreen({ navigation }: Props) {
             <View style={styles.titleRow}>
               <View style={styles.titleTextGroup}>
                 <Text style={styles.pageTitle}>Gorevler</Text>
-                <Text style={styles.pageSubtitle}>Tum aktif gorevleri goruntuleyin ve yonetin.</Text>
+                <Text style={styles.pageSubtitle}>QR taleplerinden olusan aktif gorevleri goruntuleyin ve yonetin.</Text>
               </View>
-              <Pressable onPress={() => showUnavailableAction('Yeni gorev')} style={styles.newButton}>
-                <Ionicons name="add" size={18} color={COLORS.surface} />
-                <Text style={styles.newButtonText}>Yeni</Text>
-              </Pressable>
             </View>
 
             <View style={styles.statGrid}>

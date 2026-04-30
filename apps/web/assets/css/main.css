@@ -637,6 +637,20 @@ label {
   padding: 0;
 }
 
+.login-help-button {
+  border: 0;
+  background: transparent;
+  color: #004ac6;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.login-help-button:hover,
+.login-help-button:focus-visible {
+  text-decoration: underline;
+}
+
 .login-footer {
   color: #64748b;
   font-size: 13px;

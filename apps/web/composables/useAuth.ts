@@ -27,6 +27,10 @@ interface LoginPayload {
   user: AuthUser;
 }
 
+interface LoginOptions {
+  remember?: boolean;
+}
+
 export function useAuth() {
   const accessToken = useCookie<string | null>('lbrtw_access_token', {
     default: () => null,
@@ -58,12 +62,19 @@ export function useAuth() {
     }
   }
 
-  async function login(credentials: { email: string; password: string }) {
+  async function login(credentials: { email: string; password: string }, options: LoginOptions = {}) {
     const response = await useApiFetch<ApiResponse<LoginPayload>>('/auth/login', {
       method: 'POST',
       body: credentials
     });
 
+    const persistentAccessToken = useCookie<string | null>('lbrtw_access_token', {
+      default: () => null,
+      sameSite: 'lax',
+      maxAge: options.remember === false ? undefined : 60 * 60 * 24 * 30
+    });
+
+    persistentAccessToken.value = response.data.accessToken;
     accessToken.value = response.data.accessToken;
     user.value = response.data.user;
     initialized.value = true;

@@ -13,7 +13,7 @@ interface AuthState {
   user: AuthUser | null;
   error: string | null;
   bootstrap: () => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, remember?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
 }
@@ -57,7 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, remember = true) {
     set({ status: 'loading', error: null });
 
     try {
@@ -66,7 +66,12 @@ export const useAuthStore = create<AuthState>((set) => ({
         password: password.trim()
       });
 
-      await SecureStore.setItemAsync(AUTH_TOKEN_KEY, response.accessToken);
+      if (remember) {
+        await SecureStore.setItemAsync(AUTH_TOKEN_KEY, response.accessToken);
+      } else {
+        await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+      }
+
       setApiAccessToken(response.accessToken);
 
       set({

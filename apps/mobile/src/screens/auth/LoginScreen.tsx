@@ -21,7 +21,9 @@ export function LoginScreen() {
 
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('Admin123!');
+  const [rememberMe, setRememberMe] = useState(true);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [helpMessage, setHelpMessage] = useState<string | null>(null);
 
   const isLoading = status === 'loading';
   const errorMessage = validationError ?? authError;
@@ -29,6 +31,7 @@ export function LoginScreen() {
   async function handleSubmit() {
     clearError();
     setValidationError(null);
+    setHelpMessage(null);
 
     if (!email.trim() || !password.trim()) {
       setValidationError('Email ve sifre zorunludur.');
@@ -36,7 +39,7 @@ export function LoginScreen() {
     }
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
     } catch (_error) {
       return;
     }
@@ -81,14 +84,23 @@ export function LoginScreen() {
           />
 
           <View style={styles.loginActionRow}>
-            <Pressable disabled style={styles.rememberMe}>
-              <View style={styles.checkbox} />
+            <Pressable onPress={() => setRememberMe((value) => !value)} style={styles.rememberMe}>
+              <View style={[styles.checkbox, rememberMe ? styles.checkboxActive : null]} />
               <Text style={styles.actionText}>Beni Hatirla</Text>
             </Pressable>
-            <Text style={styles.actionText}>Sifremi Unuttum?</Text>
+            <Pressable
+              onPress={() => {
+                clearError();
+                setValidationError(null);
+                setHelpMessage('Sifre yenileme icin sistem yoneticisinden kullanici kartindan yeni sifre belirlemesini iste.');
+              }}
+            >
+              <Text style={styles.actionText}>Sifremi Unuttum?</Text>
+            </Pressable>
           </View>
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+          {helpMessage ? <Text style={styles.helpText}>{helpMessage}</Text> : null}
 
           <AppButton
             label={isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
@@ -158,6 +170,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.surfaceMuted
   },
+  checkboxActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary
+  },
   actionText: {
     color: COLORS.textMuted,
     fontSize: 13,
@@ -167,6 +183,12 @@ const styles = StyleSheet.create({
     color: COLORS.danger,
     fontSize: 14,
     fontWeight: '600'
+  },
+  helpText: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19
   },
   apiHint: {
     color: COLORS.textMuted,

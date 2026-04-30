@@ -27,6 +27,7 @@ export function OrganizationsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingOrganization, setEditingOrganization] = useState<AdminOrganization | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [type, setType] = useState<OrganizationType>(OrganizationType.HOSPITAL);
@@ -84,7 +85,29 @@ export function OrganizationsScreen() {
   );
   const hasActiveFilter = searchTerm.trim().length > 0;
 
-  async function handleCreateOrganization() {
+  function openCreateModal() {
+    setEditingOrganization(null);
+    setName('');
+    setCode('');
+    setType(OrganizationType.HOSPITAL);
+    setIsActive(true);
+    setTelegramEnabled(false);
+    setFormError(null);
+    setModalVisible(true);
+  }
+
+  function openEditModal(organization: AdminOrganization) {
+    setEditingOrganization(organization);
+    setName(organization.name);
+    setCode(organization.code);
+    setType(organization.type);
+    setIsActive(organization.isActive);
+    setTelegramEnabled(organization.telegramEnabled);
+    setFormError(null);
+    setModalVisible(true);
+  }
+
+  async function handleSaveOrganization() {
     setFormError(null);
 
     if (!name.trim() || !code.trim()) {
@@ -94,14 +117,22 @@ export function OrganizationsScreen() {
 
     setSubmitting(true);
     try {
-      await organizationsApi.create({
+      const payload = {
         name: name.trim(),
         code: code.trim(),
         type,
         isActive,
         telegramEnabled
-      });
+      };
+
+      if (editingOrganization) {
+        await organizationsApi.update(editingOrganization.id, payload);
+      } else {
+        await organizationsApi.create(payload);
+      }
+
       setModalVisible(false);
+      setEditingOrganization(null);
       setName('');
       setCode('');
       setType(OrganizationType.HOSPITAL);
@@ -126,7 +157,7 @@ export function OrganizationsScreen() {
           <View style={styles.headerGroup}>
             <View style={styles.titleRow}>
               <Text style={styles.pageTitle}>Kurumlar</Text>
-              <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
+              <Pressable onPress={openCreateModal} style={styles.newButton}>
                 <Ionicons name="add" size={18} color={COLORS.surface} />
                 <Text style={styles.newButtonText}>Yeni Kurum</Text>
               </Pressable>
@@ -156,14 +187,18 @@ export function OrganizationsScreen() {
         }
         onRefresh={() => void loadOrganizations('refresh')}
         refreshing={refreshing}
-        renderItem={({ item }) => <OrganizationCard organization={item} />}
+        renderItem={({ item }) => <OrganizationCard onEdit={openEditModal} organization={item} />}
         showsVerticalScrollIndicator={false}
       />
       {loading ? <LoadingView description="Kurumlar aliniyor." title="Yukleniyor" /> : null}
       <FormModal
         onClose={() => setModalVisible(false)}
-        subtitle="Kurum olusturulunca root lokasyon webdeki gibi otomatik acilir."
-        title="Yeni Kurum"
+        subtitle={
+          editingOrganization
+            ? 'Kurum bilgileri, durum ve bildirim tercihi guncellenir.'
+            : 'Kurum olusturulunca root lokasyon webdeki gibi otomatik acilir.'
+        }
+        title={editingOrganization ? 'Kurum Duzenle' : 'Yeni Kurum'}
         visible={modalVisible}
       >
         <AppInput label="Kurum Adi" onChangeText={setName} placeholder="Ozel Hastane C" value={name} />
@@ -195,13 +230,24 @@ export function OrganizationsScreen() {
         </View>
 
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-        <AppButton label="Kurum Olustur" loading={submitting} onPress={handleCreateOrganization} rightIcon="checkmark-outline" />
+        <AppButton
+          label={editingOrganization ? 'Kurum Guncelle' : 'Kurum Olustur'}
+          loading={submitting}
+          onPress={handleSaveOrganization}
+          rightIcon="checkmark-outline"
+        />
       </FormModal>
     </ScreenContainer>
   );
 }
 
-function OrganizationCard({ organization }: { organization: AdminOrganization }) {
+function OrganizationCard({
+  onEdit,
+  organization
+}: {
+  onEdit: (organization: AdminOrganization) => void;
+  organization: AdminOrganization;
+}) {
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -220,6 +266,9 @@ function OrganizationCard({ organization }: { organization: AdminOrganization })
       <View style={styles.cardFooter}>
         <Text style={styles.footerText}>{organization._count.locations} Lokasyon</Text>
         <Text style={styles.footerText}>{organization._count.users} Kullanici</Text>
+        <Pressable onPress={() => onEdit(organization)} style={({ pressed }) => [styles.editPill, pressed ? styles.pressed : null]}>
+          <Text style={styles.editPillText}>Duzenle</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -323,7 +372,9 @@ const styles = StyleSheet.create({
   },
   cardFooter: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
     borderTopWidth: 1,
     borderTopColor: '#eef0f3',
     paddingTop: 12
@@ -332,6 +383,21 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     fontSize: 13,
     fontWeight: '700'
+  },
+  editPill: {
+    minHeight: 30,
+    justifyContent: 'center',
+    borderRadius: 999,
+    backgroundColor: COLORS.surfaceMuted,
+    paddingHorizontal: 10
+  },
+  editPillText: {
+    color: COLORS.heading,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  pressed: {
+    opacity: 0.75
   },
   formSection: {
     gap: 10

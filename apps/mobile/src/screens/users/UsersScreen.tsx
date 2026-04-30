@@ -35,6 +35,7 @@ export function UsersScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('Admin123!');
@@ -113,11 +114,35 @@ export function UsersScreen() {
   );
   const hasActiveFilter = searchTerm.trim().length > 0 || roleFilter !== 'ALL' || statusFilter !== 'ALL';
 
-  async function handleCreateUser() {
+  function openCreateModal() {
+    setEditingUser(null);
+    setFullName('');
+    setEmail('');
+    setPassword('Admin123!');
+    setRole(Role.STAFF);
+    setOrganizationId(organizations[0]?.id ?? '');
+    setIsActive(true);
+    setFormError(null);
+    setModalVisible(true);
+  }
+
+  function openEditModal(user: AdminUser) {
+    setEditingUser(user);
+    setFullName(user.fullName);
+    setEmail(user.email);
+    setPassword('');
+    setRole(user.role);
+    setOrganizationId(user.organizationId ?? organizations[0]?.id ?? '');
+    setIsActive(user.isActive);
+    setFormError(null);
+    setModalVisible(true);
+  }
+
+  async function handleSaveUser() {
     setFormError(null);
 
-    if (!fullName.trim() || !email.trim() || !password.trim()) {
-      setFormError('Ad soyad, email ve sifre zorunludur.');
+    if (!fullName.trim() || !email.trim() || (!editingUser && !password.trim())) {
+      setFormError(editingUser ? 'Ad soyad ve email zorunludur.' : 'Ad soyad, email ve sifre zorunludur.');
       return;
     }
 
@@ -128,15 +153,29 @@ export function UsersScreen() {
 
     setSubmitting(true);
     try {
-      await usersApi.create({
+      const payload = {
         fullName: fullName.trim(),
         email: email.trim(),
-        password: password.trim(),
         role,
         organizationId: role === Role.ADMIN ? undefined : organizationId,
         isActive
-      });
+      };
+
+      if (editingUser) {
+        await usersApi.update(editingUser.id, {
+          ...payload,
+          organizationId: role === Role.ADMIN ? null : organizationId,
+          ...(password.trim() ? { password: password.trim() } : {})
+        });
+      } else {
+        await usersApi.create({
+          ...payload,
+          password: password.trim()
+        });
+      }
+
       setModalVisible(false);
+      setEditingUser(null);
       setFullName('');
       setEmail('');
       setPassword('Admin123!');
@@ -178,7 +217,7 @@ export function UsersScreen() {
                 <Text style={styles.pageTitle}>Supervisor ve Staff Hesaplari</Text>
                 <Text style={styles.pageSubtitle}>Sistemdeki tum operasyonel kullanicilari yonetin.</Text>
               </View>
-              <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
+              <Pressable onPress={openCreateModal} style={styles.newButton}>
                 <Ionicons name="add" size={18} color={COLORS.surface} />
                 <Text style={styles.newButtonText}>Yeni Kullanici Ekle</Text>
               </Pressable>
@@ -228,14 +267,18 @@ export function UsersScreen() {
         onRefresh={() => void loadUsers('refresh')}
         numColumns={2}
         refreshing={refreshing}
-        renderItem={({ item }) => <UserCard user={item} />}
+        renderItem={({ item }) => <UserCard onEdit={openEditModal} user={item} />}
         showsVerticalScrollIndicator={false}
       />
       {loading ? <LoadingView description="Kullanicilar aliniyor." title="Yukleniyor" /> : null}
       <FormModal
         onClose={() => setModalVisible(false)}
-        subtitle="Webdeki kullanici olusturma mantigi ile ayni endpoint kullanilir."
-        title="Yeni Kullanici"
+        subtitle={
+          editingUser
+            ? 'Kullanici bilgileri, rol, kurum ve durum guncellenir.'
+            : 'Webdeki kullanici olusturma mantigi ile ayni endpoint kullanilir.'
+        }
+        title={editingUser ? 'Kullanici Duzenle' : 'Yeni Kullanici'}
         visible={modalVisible}
       >
         <AppInput label="Ad Soyad" onChangeText={setFullName} placeholder="Mehmet Can" value={fullName} />
@@ -247,7 +290,13 @@ export function UsersScreen() {
           placeholder="m.can@example.com"
           value={email}
         />
-        <AppInput label="Sifre" onChangeText={setPassword} placeholder="Admin123!" secureTextEntry value={password} />
+        <AppInput
+          label="Sifre"
+          onChangeText={setPassword}
+          placeholder={editingUser ? 'Degistirmeyeceksen bos birak' : 'Admin123!'}
+          secureTextEntry
+          value={password}
+        />
 
         <View style={styles.formSection}>
           <Text style={styles.formLabel}>Rol</Text>
@@ -283,7 +332,12 @@ export function UsersScreen() {
         </View>
 
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-        <AppButton label="Kullanici Olustur" loading={submitting} onPress={handleCreateUser} rightIcon="checkmark-outline" />
+        <AppButton
+          label={editingUser ? 'Kullanici Guncelle' : 'Kullanici Olustur'}
+          loading={submitting}
+          onPress={handleSaveUser}
+          rightIcon="checkmark-outline"
+        />
       </FormModal>
     </ScreenContainer>
   );
@@ -310,7 +364,7 @@ function getStatusFilterLabel(statusFilter: UserStatusFilter) {
   return 'Tum Durumlar';
 }
 
-function UserCard({ user }: { user: AdminUser }) {
+function UserCard({ onEdit, user }: { onEdit: (user: AdminUser) => void; user: AdminUser }) {
   const initials = user.fullName
     .split(' ')
     .map((part) => part[0])
@@ -347,6 +401,9 @@ function UserCard({ user }: { user: AdminUser }) {
         <Text style={styles.infoLabel}>Kurum</Text>
         <Text numberOfLines={1} style={styles.orgValue}>{user.organization?.name ?? 'Tum Sistem'}</Text>
       </View>
+      <Pressable onPress={() => onEdit(user)} style={({ pressed }) => [styles.editButton, pressed ? styles.pressed : null]}>
+        <Text style={styles.editButtonText}>Duzenle</Text>
+      </Pressable>
     </View>
   );
 }
@@ -581,6 +638,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     marginTop: 6
+  },
+  editButton: {
+    minHeight: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceMuted
+  },
+  editButtonText: {
+    color: COLORS.heading,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  pressed: {
+    opacity: 0.75
   },
   formSection: {
     gap: 10

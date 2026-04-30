@@ -4,7 +4,9 @@ import type {
   CreateLocationPayload,
   CreateOrganizationPayload,
   CreateUserPayload,
-  LocationTreeNode
+  LocationTreeNode,
+  UpdateOrganizationPayload,
+  UpdateUserPayload
 } from '../types/admin';
 import { apiClient, unwrapResponse } from './client';
 
@@ -15,6 +17,10 @@ export const organizationsApi = {
 
   create(payload: CreateOrganizationPayload) {
     return unwrapResponse<AdminOrganization>(apiClient.post('/organizations', payload));
+  },
+
+  update(organizationId: string, payload: UpdateOrganizationPayload) {
+    return unwrapResponse<AdminOrganization>(apiClient.patch(`/organizations/${organizationId}`, payload));
   }
 };
 
@@ -25,6 +31,10 @@ export const usersApi = {
 
   create(payload: CreateUserPayload) {
     return unwrapResponse<AdminUser>(apiClient.post('/users', payload));
+  },
+
+  update(userId: string, payload: UpdateUserPayload) {
+    return unwrapResponse<AdminUser>(apiClient.patch(`/users/${userId}`, payload));
   }
 };
 

@@ -38,6 +38,7 @@ const searchTerm = ref('');
 const roleFilter = ref<'ALL' | Role>('ALL');
 const statusFilter = ref<'ALL' | 'ACTIVE' | 'PASSIVE'>('ALL');
 const isCreateModalOpen = ref(false);
+const editingUser = ref<UserItem | null>(null);
 const pageMessage = ref('');
 
 function readOrganizationIdFromRoute() {
@@ -56,6 +57,7 @@ const form = reactive({
 const submitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
+const isEditMode = computed(() => Boolean(editingUser.value));
 
 const roleOptions = [Role.SUPERVISOR, Role.STAFF, Role.ADMIN];
 
@@ -185,6 +187,22 @@ function openCreateModal() {
   pageMessage.value = '';
   formError.value = '';
   formMessage.value = '';
+  editingUser.value = null;
+  resetForm();
+  isCreateModalOpen.value = true;
+}
+
+function openEditModal(user: UserItem) {
+  pageMessage.value = '';
+  formError.value = '';
+  formMessage.value = '';
+  editingUser.value = user;
+  form.fullName = user.fullName;
+  form.email = user.email;
+  form.password = '';
+  form.role = user.role;
+  form.organizationId = user.organizationId ?? '';
+  form.isActive = user.isActive;
   isCreateModalOpen.value = true;
 }
 
@@ -194,6 +212,7 @@ function closeCreateModal() {
   }
 
   isCreateModalOpen.value = false;
+  editingUser.value = null;
   formError.value = '';
   formMessage.value = '';
 }
@@ -217,27 +236,42 @@ async function submit() {
     return;
   }
 
+  if (!isEditMode.value && !form.password.trim()) {
+    formError.value = 'Yeni kullanici icin sifre zorunlu.';
+    return;
+  }
+
   submitting.value = true;
 
   try {
-    await useApiFetch<ApiResponse<UserItem>>('/users', {
-      method: 'POST',
-      body: {
-        fullName: form.fullName,
-        email: form.email,
-        password: form.password,
-        role: form.role,
-        organizationId: form.role === Role.ADMIN ? undefined : form.organizationId,
-        isActive: form.isActive
-      }
+    const body: Record<string, unknown> = {
+      fullName: form.fullName,
+      email: form.email,
+      role: form.role,
+      organizationId: form.role === Role.ADMIN ? (isEditMode.value ? null : undefined) : form.organizationId,
+      isActive: form.isActive
+    };
+
+    if (form.password.trim()) {
+      body.password = form.password;
+    }
+
+    await useApiFetch<ApiResponse<UserItem>>(isEditMode.value ? `/users/${editingUser.value?.id}` : '/users', {
+      method: isEditMode.value ? 'PATCH' : 'POST',
+      body
     });
 
+    const wasEditMode = isEditMode.value;
     resetForm();
     isCreateModalOpen.value = false;
-    pageMessage.value = 'Kullanici olusturuldu.';
+    editingUser.value = null;
+    pageMessage.value = wasEditMode ? 'Kullanici guncellendi.' : 'Kullanici olusturuldu.';
     await refresh();
   } catch (requestError) {
-    formError.value = getApiErrorMessage(requestError, 'Kullanici olusturulamadi.');
+    formError.value = getApiErrorMessage(
+      requestError,
+      isEditMode.value ? 'Kullanici guncellenemedi.' : 'Kullanici olusturulamadi.'
+    );
   } finally {
     submitting.value = false;
   }
@@ -358,6 +392,7 @@ function getInitials(value: string) {
               <th>Kurum</th>
               <th>Durum</th>
               <th>Olusturulma</th>
+              <th>Aksiyon</th>
             </tr>
           </thead>
           <tbody>
@@ -387,10 +422,13 @@ function getInitials(value: string) {
                 </span>
               </td>
               <td>{{ formatDate(user.createdAt) }}</td>
+              <td>
+                <button class="button small" type="button" @click="openEditModal(user)">Duzenle</button>
+              </td>
             </tr>
 
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="5">Secili filtrelerde kullanici yok.</td>
+              <td colspan="6">Secili filtrelerde kullanici yok.</td>
             </tr>
           </tbody>
         </table>
@@ -401,8 +439,8 @@ function getInitials(value: string) {
       <section class="users-create-modal" role="dialog" aria-modal="true" aria-labelledby="createUserTitle">
         <header class="users-modal-header">
           <div>
-            <p class="eyebrow">Yeni kullanici</p>
-            <h2 id="createUserTitle">Hesap olustur</h2>
+            <p class="eyebrow">{{ isEditMode ? 'Kullanici duzenle' : 'Yeni kullanici' }}</p>
+            <h2 id="createUserTitle">{{ isEditMode ? 'Hesabi guncelle' : 'Hesap olustur' }}</h2>
           </div>
           <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
         </header>
@@ -466,8 +504,8 @@ function getInitials(value: string) {
               v-model="form.password"
               type="password"
               minlength="6"
-              placeholder="Admin123!"
-              required
+              :placeholder="isEditMode ? 'Degistirmeyeceksen bos birak' : 'Admin123!'"
+              :required="!isEditMode"
             />
           </label>
 
@@ -480,7 +518,7 @@ function getInitials(value: string) {
           <div class="users-modal-actions">
             <button class="button small" type="button" :disabled="submitting" @click="closeCreateModal">Vazgec</button>
             <button class="button primary" type="submit" :disabled="submitting">
-              {{ submitting ? 'Olusturuluyor...' : 'Olustur' }}
+              {{ submitting ? 'Kaydediliyor...' : isEditMode ? 'Guncelle' : 'Olustur' }}
             </button>
           </div>
         </form>

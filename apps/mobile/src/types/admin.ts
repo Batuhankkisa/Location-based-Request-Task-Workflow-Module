@@ -69,12 +69,31 @@ export interface CreateOrganizationPayload {
   telegramNotificationThreadId?: string;
 }
 
+export interface UpdateOrganizationPayload {
+  name?: string;
+  code?: string;
+  type?: OrganizationType;
+  isActive?: boolean;
+  telegramEnabled?: boolean;
+  telegramChatId?: string;
+  telegramNotificationThreadId?: string;
+}
+
 export interface CreateUserPayload {
   email: string;
   fullName: string;
   role: Role;
   password: string;
   organizationId?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateUserPayload {
+  email?: string;
+  fullName?: string;
+  role?: Role;
+  password?: string;
+  organizationId?: string | null;
   isActive?: boolean;
 }
 
