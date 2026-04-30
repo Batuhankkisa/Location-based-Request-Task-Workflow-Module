@@ -21,9 +21,10 @@ import type { QrListItem } from '../../types/qr';
 import { COLORS, LAYOUT } from '../../utils/constants';
 import { formatDateTime } from '../../utils/date';
 import type { QrsStackParamList } from '../../navigation/types';
-import { showUnavailableAction } from '../../utils/alerts';
+import { matchesSearchTerm } from '../../utils/search';
 
 type Props = NativeStackScreenProps<QrsStackParamList, 'QrList'>;
+type QrStatusFilter = 'ALL' | 'ACTIVE' | 'PASSIVE';
 
 export function QrListScreen({ navigation }: Props) {
   const [items, setItems] = useState<QrListItem[]>([]);
@@ -38,6 +39,8 @@ export function QrListScreen({ navigation }: Props) {
   const [label, setLabel] = useState('');
   const [locationId, setLocationId] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<QrStatusFilter>('ALL');
 
   const loadItems = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -89,6 +92,29 @@ export function QrListScreen({ navigation }: Props) {
     () => flattenLocations(locations).filter((location) => location.type !== 'ORGANIZATION'),
     [locations]
   );
+  const filteredItems = useMemo(
+    () =>
+      items.filter((item) => {
+        const matchesStatus =
+          statusFilter === 'ALL' ||
+          (statusFilter === 'ACTIVE' && item.isActive) ||
+          (statusFilter === 'PASSIVE' && !item.isActive);
+        const matchesSearch = matchesSearchTerm(searchTerm, [
+          item.token,
+          item.label,
+          item.location.name,
+          item.location.code,
+          item.location.type,
+          item.location.organization?.name,
+          item.scanCount,
+          item.isActive ? 'aktif' : 'pasif'
+        ]);
+
+        return matchesStatus && matchesSearch;
+      }),
+    [items, searchTerm, statusFilter]
+  );
+  const hasActiveFilter = searchTerm.trim().length > 0 || statusFilter !== 'ALL';
 
   async function handleCreateQr() {
     setFormError(null);
@@ -122,22 +148,22 @@ export function QrListScreen({ navigation }: Props) {
     <ScreenContainer style={styles.screen}>
       <MobileTopBar />
       <FlatList
-        contentContainerStyle={items.length ? styles.listContent : styles.emptyContent}
-        data={items}
+        contentContainerStyle={filteredItems.length ? styles.listContent : styles.emptyContent}
+        data={filteredItems}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'QR listesi alinamadi' : 'QR kaydi yok'}
+              title={error ? 'QR listesi alinamadi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'QR kaydi yok'}
               description={
                 error
                   ? error
-                  : 'Supervisor ve admin kullanicilari icin QR kayitlari bu alanda listelenir.'
+                  : hasActiveFilter
+                    ? 'Arama veya filtre secimine uyan QR kaydi bulunamadi.'
+                    : 'Supervisor ve admin kullanicilari icin QR kayitlari bu alanda listelenir.'
               }
-              actionLabel="Yeniden dene"
-              onAction={() => {
-                void loadItems('initial');
-              }}
+              actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
+              onAction={error || !hasActiveFilter ? () => void loadItems('initial') : undefined}
             />
           )
         }
@@ -163,11 +189,18 @@ export function QrListScreen({ navigation }: Props) {
 
             <View style={styles.searchRow}>
               <View style={styles.searchWrap}>
-                <SearchBar placeholder="ID veya Lokasyon ara..." />
+                <SearchBar
+                  onChangeText={setSearchTerm}
+                  placeholder="ID veya lokasyon ara..."
+                  value={searchTerm}
+                />
               </View>
-              <Pressable onPress={() => showUnavailableAction('QR filtreleri')} style={styles.filterButton}>
-                <Ionicons name="options-outline" size={22} color={COLORS.heading} />
-              </Pressable>
+            </View>
+
+            <View style={styles.filterRow}>
+              <FilterChip active={statusFilter === 'ALL'} label="Tumu" onPress={() => setStatusFilter('ALL')} />
+              <FilterChip active={statusFilter === 'ACTIVE'} label="Aktif" onPress={() => setStatusFilter('ACTIVE')} />
+              <FilterChip active={statusFilter === 'PASSIVE'} label="Pasif" onPress={() => setStatusFilter('PASSIVE')} />
             </View>
 
             <Text style={styles.sectionTitle}>Son Eklenenler</Text>
@@ -237,6 +270,17 @@ export function QrListScreen({ navigation }: Props) {
         <AppButton label="QR Olustur" loading={submitting} onPress={handleCreateQr} rightIcon="checkmark-outline" />
       </FormModal>
     </ScreenContainer>
+  );
+}
+
+function FilterChip({ label, active = false, onPress }: { label: string; active?: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.filterChip, active ? styles.filterChipActive : null, pressed ? styles.pressed : null]}
+    >
+      <Text style={[styles.filterChipText, active ? styles.filterChipTextActive : null]}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -319,15 +363,34 @@ const styles = StyleSheet.create({
   searchWrap: {
     flex: 1
   },
-  filterButton: {
-    width: 52,
-    minHeight: 46,
-    alignItems: 'center',
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  filterChip: {
+    minHeight: 34,
     justifyContent: 'center',
-    borderRadius: 8,
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.surface
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 13
+  },
+  filterChipActive: {
+    borderColor: '#2f77e5',
+    backgroundColor: '#2f77e5'
+  },
+  filterChipText: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '800'
+  },
+  filterChipTextActive: {
+    color: COLORS.surface
+  },
+  pressed: {
+    opacity: 0.75
   },
   sectionTitle: {
     color: COLORS.heading,

@@ -18,6 +18,7 @@ import { COLORS, LAYOUT, TASK_STATUS_META } from '../../utils/constants';
 import { TaskStatus } from '@lbrtw/shared';
 import { showUnavailableAction } from '../../utils/alerts';
 import type { TasksStackParamList } from '../../navigation/types';
+import { matchesSearchTerm } from '../../utils/search';
 
 type Props = NativeStackScreenProps<TasksStackParamList, 'TaskList'>;
 
@@ -26,6 +27,8 @@ export function TaskListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
 
   const loadTasks = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -61,27 +64,47 @@ export function TaskListScreen({ navigation }: Props) {
     }),
     [tasks]
   );
+  const filteredTasks = useMemo(
+    () =>
+      tasks.filter((task) => {
+        const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter;
+        const matchesSearch = matchesSearchTerm(searchTerm, [
+          task.request.requestText,
+          task.request.transcriptText,
+          task.location.name,
+          task.location.code,
+          task.location.type,
+          task.location.organization?.name,
+          task.assignedTo,
+          TASK_STATUS_META[task.status].label
+        ]);
+
+        return matchesStatus && matchesSearch;
+      }),
+    [searchTerm, statusFilter, tasks]
+  );
+  const hasActiveFilter = searchTerm.trim().length > 0 || statusFilter !== 'ALL';
 
   return (
     <ScreenContainer style={styles.screen}>
       <MobileTopBar />
       <FlatList
-        contentContainerStyle={tasks.length ? styles.listContent : styles.emptyContent}
-        data={tasks}
+        contentContainerStyle={filteredTasks.length ? styles.listContent : styles.emptyContent}
+        data={filteredTasks}
         keyExtractor={(item) => item.id}
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'Gorevler yuklenemedi' : 'Acik gorev yok'}
+              title={error ? 'Gorevler yuklenemedi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'Acik gorev yok'}
               description={
                 error
                   ? error
-                  : 'Bu rolde goruntulenebilir aktif bir gorev bulundugunda burada kart olarak listelenir.'
+                  : hasActiveFilter
+                    ? 'Arama veya filtre secimine uyan gorev bulunamadi.'
+                    : 'Bu rolde goruntulenebilir aktif bir gorev bulundugunda burada kart olarak listelenir.'
               }
-              actionLabel="Yeniden dene"
-              onAction={() => {
-                void loadTasks('initial');
-              }}
+              actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
+              onAction={error || !hasActiveFilter ? () => void loadTasks('initial') : undefined}
             />
           )
         }
@@ -107,13 +130,29 @@ export function TaskListScreen({ navigation }: Props) {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.searchRow}>
-                <View style={styles.searchIconOnly}>
-                  <Ionicons name="search-outline" size={21} color="#687385" />
+                <View style={styles.searchWrap}>
+                  <SearchBar
+                    onChangeText={setSearchTerm}
+                    placeholder="Talep, lokasyon veya kod ara..."
+                    value={searchTerm}
+                  />
                 </View>
-                <FilterChip active label="Tumu" />
-                <FilterChip label="Housekeeping" />
-                <FilterChip label="Teknik" />
-                <FilterChip label="Guvenlik" />
+                <FilterChip active={statusFilter === 'ALL'} label="Tumu" onPress={() => setStatusFilter('ALL')} />
+                <FilterChip
+                  active={statusFilter === TaskStatus.NEW}
+                  label={TASK_STATUS_META[TaskStatus.NEW].label}
+                  onPress={() => setStatusFilter(TaskStatus.NEW)}
+                />
+                <FilterChip
+                  active={statusFilter === TaskStatus.IN_PROGRESS}
+                  label={TASK_STATUS_META[TaskStatus.IN_PROGRESS].label}
+                  onPress={() => setStatusFilter(TaskStatus.IN_PROGRESS)}
+                />
+                <FilterChip
+                  active={statusFilter === TaskStatus.DONE_WAITING_APPROVAL}
+                  label={TASK_STATUS_META[TaskStatus.DONE_WAITING_APPROVAL].label}
+                  onPress={() => setStatusFilter(TaskStatus.DONE_WAITING_APPROVAL)}
+                />
               </View>
             </ScrollView>
           </View>
@@ -172,10 +211,10 @@ export function TaskListScreen({ navigation }: Props) {
   );
 }
 
-function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
+function FilterChip({ label, active = false, onPress }: { label: string; active?: boolean; onPress: () => void }) {
   return (
     <Pressable
-      onPress={() => showUnavailableAction(`${label} filtresi`)}
+      onPress={onPress}
       style={({ pressed }) => [styles.filterChip, active ? styles.filterChipActive : null, pressed ? styles.pressed : null]}
     >
       <Text style={[styles.filterChipText, active ? styles.filterChipTextActive : null]}>{label}</Text>
@@ -247,15 +286,11 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8
   },
-  searchIconOnly: {
-    width: 56,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 10,
-    backgroundColor: '#eef2f7'
+  searchWrap: {
+    width: 230
   },
   filterChip: {
     minHeight: 36,

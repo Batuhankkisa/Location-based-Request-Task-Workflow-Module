@@ -10,6 +10,7 @@ import { AppInput } from '../../components/AppInput';
 import { EmptyState } from '../../components/EmptyState';
 import { FormModal, OptionChip } from '../../components/FormModal';
 import { LoadingView } from '../../components/LoadingView';
+import { MobileTopBar } from '../../components/MobileTopBar';
 import { SearchBar } from '../../components/SearchBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatCard } from '../../components/StatCard';
@@ -17,7 +18,13 @@ import { StatusBadge } from '../../components/StatusBadge';
 import type { AdminOrganization, AdminUser } from '../../types/admin';
 import { COLORS, LAYOUT } from '../../utils/constants';
 import { getRoleLabel } from '../../utils/role';
-import { showUnavailableAction } from '../../utils/alerts';
+import { matchesSearchTerm } from '../../utils/search';
+
+type RoleFilter = 'ALL' | Role;
+type UserStatusFilter = 'ALL' | 'ACTIVE' | 'PASSIVE';
+
+const ROLE_FILTER_SEQUENCE: RoleFilter[] = ['ALL', Role.SUPERVISOR, Role.STAFF, Role.ADMIN];
+const STATUS_FILTER_SEQUENCE: UserStatusFilter[] = ['ALL', 'ACTIVE', 'PASSIVE'];
 
 export function UsersScreen() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -34,6 +41,9 @@ export function UsersScreen() {
   const [role, setRole] = useState<Role>(Role.STAFF);
   const [organizationId, setOrganizationId] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('ALL');
+  const [statusFilter, setStatusFilter] = useState<UserStatusFilter>('ALL');
 
   const loadUsers = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -79,6 +89,29 @@ export function UsersScreen() {
     }),
     [users]
   );
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        const matchesRole = roleFilter === 'ALL' || user.role === roleFilter;
+        const matchesStatus =
+          statusFilter === 'ALL' ||
+          (statusFilter === 'ACTIVE' && user.isActive) ||
+          (statusFilter === 'PASSIVE' && !user.isActive);
+        const matchesSearch = matchesSearchTerm(searchTerm, [
+          user.fullName,
+          user.email,
+          user.role,
+          getRoleLabel(user.role),
+          user.organization?.name,
+          user.organization?.code,
+          user.isActive ? 'aktif' : 'pasif'
+        ]);
+
+        return matchesRole && matchesStatus && matchesSearch;
+      }),
+    [roleFilter, searchTerm, statusFilter, users]
+  );
+  const hasActiveFilter = searchTerm.trim().length > 0 || roleFilter !== 'ALL' || statusFilter !== 'ALL';
 
   async function handleCreateUser() {
     setFormError(null);
@@ -119,10 +152,11 @@ export function UsersScreen() {
 
   return (
     <ScreenContainer style={styles.screen}>
+      <MobileTopBar />
       <FlatList
         columnWrapperStyle={styles.columnWrapper}
-        contentContainerStyle={users.length ? styles.content : styles.emptyContent}
-        data={users}
+        contentContainerStyle={filteredUsers.length ? styles.content : styles.emptyContent}
+        data={filteredUsers}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.headerGroup}>
@@ -159,15 +193,19 @@ export function UsersScreen() {
 
             <View style={styles.filterPanel}>
               <View style={styles.searchWrap}>
-                <SearchBar placeholder="Isim, email veya kurum ara..." />
+                <SearchBar
+                  onChangeText={setSearchTerm}
+                  placeholder="Isim, email veya kurum ara..."
+                  value={searchTerm}
+                />
               </View>
-              <Pressable onPress={() => showUnavailableAction('Rol secimi')} style={styles.roleSelect}>
-                <Text style={styles.roleSelectText}>Tum Roller</Text>
+              <Pressable onPress={() => setRoleFilter(getNextValue(roleFilter, ROLE_FILTER_SEQUENCE))} style={styles.roleSelect}>
+                <Text style={styles.roleSelectText}>{getRoleFilterLabel(roleFilter)}</Text>
                 <Ionicons name="chevron-down" size={14} color={COLORS.text} />
               </Pressable>
-              <Pressable onPress={() => showUnavailableAction('Kullanici filtresi')} style={styles.filterButton}>
+              <Pressable onPress={() => setStatusFilter(getNextValue(statusFilter, STATUS_FILTER_SEQUENCE))} style={styles.filterButton}>
                 <Ionicons name="filter-outline" size={17} color={COLORS.text} />
-                <Text style={styles.filterText}>Filtrele</Text>
+                <Text style={styles.filterText}>{getStatusFilterLabel(statusFilter)}</Text>
               </Pressable>
             </View>
           </View>
@@ -175,10 +213,15 @@ export function UsersScreen() {
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'Kullanicilar yuklenemedi' : 'Kullanici yok'}
-              description={error ?? 'Sistemde kullanici kaydi bulunmuyor.'}
-              actionLabel="Yeniden dene"
-              onAction={() => void loadUsers('initial')}
+              title={error ? 'Kullanicilar yuklenemedi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'Kullanici yok'}
+              description={
+                error ??
+                (hasActiveFilter
+                  ? 'Arama veya filtre secimine uyan kullanici bulunamadi.'
+                  : 'Sistemde kullanici kaydi bulunmuyor.')
+              }
+              actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
+              onAction={error || !hasActiveFilter ? () => void loadUsers('initial') : undefined}
             />
           )
         }
@@ -244,6 +287,27 @@ export function UsersScreen() {
       </FormModal>
     </ScreenContainer>
   );
+}
+
+function getNextValue<T>(current: T, sequence: T[]) {
+  const currentIndex = sequence.indexOf(current);
+  return sequence[(currentIndex + 1) % sequence.length] ?? sequence[0];
+}
+
+function getRoleFilterLabel(roleFilter: RoleFilter) {
+  return roleFilter === 'ALL' ? 'Tum Roller' : getRoleLabel(roleFilter);
+}
+
+function getStatusFilterLabel(statusFilter: UserStatusFilter) {
+  if (statusFilter === 'ACTIVE') {
+    return 'Aktif';
+  }
+
+  if (statusFilter === 'PASSIVE') {
+    return 'Pasif';
+  }
+
+  return 'Tum Durumlar';
 }
 
 function UserCard({ user }: { user: AdminUser }) {

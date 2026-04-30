@@ -11,12 +11,13 @@ import { EmptyState } from '../../components/EmptyState';
 import { FormModal, OptionChip } from '../../components/FormModal';
 import { LoadingView } from '../../components/LoadingView';
 import { MobileTopBar } from '../../components/MobileTopBar';
+import { SearchBar } from '../../components/SearchBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatCard } from '../../components/StatCard';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { AdminOrganization } from '../../types/admin';
 import { COLORS, LAYOUT } from '../../utils/constants';
-import { showUnavailableAction } from '../../utils/alerts';
+import { matchesSearchTerm } from '../../utils/search';
 
 export function OrganizationsScreen() {
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
@@ -31,6 +32,7 @@ export function OrganizationsScreen() {
   const [type, setType] = useState<OrganizationType>(OrganizationType.HOSPITAL);
   const [isActive, setIsActive] = useState(true);
   const [telegramEnabled, setTelegramEnabled] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadOrganizations = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -65,6 +67,22 @@ export function OrganizationsScreen() {
     }),
     [organizations]
   );
+  const filteredOrganizations = useMemo(
+    () =>
+      organizations.filter((organization) =>
+        matchesSearchTerm(searchTerm, [
+          organization.name,
+          organization.code,
+          organization.type,
+          organization.isActive ? 'aktif' : 'pasif',
+          organization.telegramEnabled ? 'telegram aktif' : 'telegram kapali',
+          organization._count.users,
+          organization._count.locations
+        ])
+      ),
+    [organizations, searchTerm]
+  );
+  const hasActiveFilter = searchTerm.trim().length > 0;
 
   async function handleCreateOrganization() {
     setFormError(null);
@@ -101,8 +119,8 @@ export function OrganizationsScreen() {
     <ScreenContainer style={styles.screen}>
       <MobileTopBar />
       <FlatList
-        contentContainerStyle={organizations.length ? styles.content : styles.emptyContent}
-        data={organizations}
+        contentContainerStyle={filteredOrganizations.length ? styles.content : styles.emptyContent}
+        data={filteredOrganizations}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.headerGroup}>
@@ -119,16 +137,20 @@ export function OrganizationsScreen() {
               <StatCard icon="people-outline" label="Kullanicilar" value={String(summary.users)} />
               <StatCard icon="paper-plane-outline" label="Telegram" tone="green" value={`${organizations.filter((item) => item.telegramEnabled).length} aktif`} />
             </View>
+            <SearchBar onChangeText={setSearchTerm} placeholder="Kurum veya kod ara..." value={searchTerm} />
             <Text style={styles.sectionTitle}>Tum Kurumlar</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'Kurumlar yuklenemedi' : 'Kurum yok'}
-              description={error ?? 'Sistemde kurum kaydi bulunmuyor.'}
-              actionLabel="Yeniden dene"
-              onAction={() => void loadOrganizations('initial')}
+              title={error ? 'Kurumlar yuklenemedi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'Kurum yok'}
+              description={
+                error ??
+                (hasActiveFilter ? 'Aramanla eslesen kurum kaydi bulunamadi.' : 'Sistemde kurum kaydi bulunmuyor.')
+              }
+              actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
+              onAction={error || !hasActiveFilter ? () => void loadOrganizations('initial') : undefined}
             />
           )
         }

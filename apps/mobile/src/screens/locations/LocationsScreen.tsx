@@ -16,7 +16,7 @@ import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { LocationTreeNode } from '../../types/admin';
 import { COLORS, LAYOUT } from '../../utils/constants';
-import { showUnavailableAction } from '../../utils/alerts';
+import { normalizeSearchText } from '../../utils/search';
 
 export function LocationsScreen() {
   const [locations, setLocations] = useState<LocationTreeNode[]>([]);
@@ -30,6 +30,7 @@ export function LocationsScreen() {
   const [code, setCode] = useState('');
   const [type, setType] = useState<LocationType>(LocationType.ROOM);
   const [parentId, setParentId] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const loadLocations = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -60,6 +61,7 @@ export function LocationsScreen() {
 
   const totals = useMemo(() => getLocationTotals(locations), [locations]);
   const parentOptions = useMemo(() => flattenLocationNodes(locations), [locations]);
+  const filteredLocations = useMemo(() => filterLocationNodes(locations, searchTerm), [locations, searchTerm]);
 
   async function handleCreateLocation() {
     setFormError(null);
@@ -107,7 +109,7 @@ export function LocationsScreen() {
           </Pressable>
         </View>
 
-        <SearchBar placeholder="Lokasyon Ara..." />
+        <SearchBar onChangeText={setSearchTerm} placeholder="Lokasyon ara..." value={searchTerm} />
 
         <View style={styles.summaryGrid}>
           <SummaryTile label="Lokasyon" value={String(totals.locations)} />
@@ -129,8 +131,12 @@ export function LocationsScreen() {
           <EmptyState title="Lokasyon yok" description="Bu scope icin lokasyon kaydi bulunmuyor." />
         ) : null}
 
+        {!loading && !error && locations.length > 0 && !filteredLocations.length ? (
+          <EmptyState title="Sonuc bulunamadi" description="Aramanla eslesen lokasyon, kurum veya QR kaydi yok." />
+        ) : null}
+
         <View style={styles.treeList}>
-          {locations.map((node) => (
+          {filteredLocations.map((node) => (
             <LocationOrganizationCard key={node.id} node={node} />
           ))}
         </View>
@@ -255,6 +261,47 @@ function getLocationTotals(nodes: LocationTreeNode[]) {
 
 function flattenLocationNodes(nodes: LocationTreeNode[]): LocationTreeNode[] {
   return nodes.flatMap((node) => [node, ...flattenLocationNodes(node.children)]);
+}
+
+function filterLocationNodes(nodes: LocationTreeNode[], rawSearchTerm: string): LocationTreeNode[] {
+  const searchTerm = normalizeSearchText(rawSearchTerm);
+
+  if (!searchTerm) {
+    return nodes;
+  }
+
+  return nodes.flatMap((node) => {
+    if (locationNodeMatches(node, searchTerm)) {
+      return [node];
+    }
+
+    const children = filterLocationNodes(node.children, searchTerm);
+    if (!children.length) {
+      return [];
+    }
+
+    return [
+      {
+        ...node,
+        children
+      }
+    ];
+  });
+}
+
+function locationNodeMatches(node: LocationTreeNode, searchTerm: string) {
+  const searchableText = [
+    node.name,
+    node.code,
+    node.type,
+    node.organization?.name,
+    node.organization?.code,
+    ...node.qrCodes.map((qr) => `${qr.label} ${qr.token} ${qr.isActive ? 'aktif' : 'pasif'}`)
+  ]
+    .map((value) => normalizeSearchText(value))
+    .join(' ');
+
+  return searchableText.includes(searchTerm);
 }
 
 const styles = StyleSheet.create({
