@@ -12,6 +12,9 @@ const canViewTasks = computed(() => Boolean(user.value));
 const canViewQrAdmin = computed(() => auth.hasRole(Role.ADMIN, Role.SUPERVISOR));
 const canManageOrganizations = computed(() => auth.hasRole(Role.ADMIN));
 const canManageUsers = computed(() => auth.hasRole(Role.ADMIN));
+const adminSearchTerm = ref('');
+const adminSearchFocused = ref(false);
+const adminSearchInput = ref<HTMLInputElement | null>(null);
 
 const adminNavItems = computed(() =>
   [
@@ -19,38 +22,84 @@ const adminNavItems = computed(() =>
       ? {
           to: '/admin/tasks',
           label: 'Açık Talepler',
-          meta: 'Requests'
+          meta: 'Requests',
+          keywords: ['gorev', 'talep', 'task', 'request', 'operasyon', 'bildirim']
         }
       : null,
     canViewQrAdmin.value
       ? {
           to: '/admin/qrs',
           label: 'QR Envanteri',
-          meta: 'QR Inventory'
+          meta: 'QR Inventory',
+          keywords: ['qr', 'envanter', 'kod', 'token', 'oda', 'link']
         }
       : null,
     canViewQrAdmin.value
       ? {
           to: '/admin/locations',
           label: 'Lokasyon Ağacı',
-          meta: 'Location Trees'
+          meta: 'Location Trees',
+          keywords: ['lokasyon', 'agac', 'tesis', 'kat', 'oda', 'alan', 'konum']
         }
       : null,
     canManageOrganizations.value
       ? {
           to: '/admin/organizations',
           label: 'Kurumlar',
-          meta: 'Organizations'
+          meta: 'Organizations',
+          keywords: ['kurum', 'organizasyon', 'organization', 'firma', 'musteri']
         }
       : null,
     canManageUsers.value
       ? {
           to: '/admin/users',
           label: 'Kullanıcılar',
-          meta: 'Users'
+          meta: 'Users',
+          keywords: ['kullanici', 'user', 'rol', 'yetki', 'admin', 'supervisor']
         }
       : null
-  ].filter((item): item is { to: string; label: string; meta: string } => Boolean(item))
+  ].filter((item): item is { to: string; label: string; meta: string; keywords: string[] } => Boolean(item))
+);
+
+const adminSearchMatches = computed(() => {
+  const query = normalizeAdminSearch(adminSearchTerm.value);
+  const items = adminNavItems.value;
+
+  if (!query) {
+    return items.slice(0, 3);
+  }
+
+  return items
+    .filter((item) =>
+      [item.label, item.meta, ...item.keywords].some((value) => normalizeAdminSearch(value).includes(query))
+    )
+    .slice(0, 4);
+});
+
+const showAdminSearchMatches = computed(
+  () => adminSearchFocused.value && adminSearchMatches.value.length > 0
+);
+
+const adminTopbarLinks = computed(() =>
+  [
+    canViewTasks.value
+      ? {
+          to: '/admin/tasks',
+          label: 'Bildirimler'
+        }
+      : null,
+    canManageOrganizations.value
+      ? {
+          to: '/admin/organizations',
+          label: 'Ayarlar'
+        }
+      : canViewQrAdmin.value
+        ? {
+            to: '/admin/qrs',
+            label: 'Ayarlar'
+          }
+        : null
+  ].filter((item): item is { to: string; label: string } => Boolean(item))
 );
 
 const pageMeta = computed(() => {
@@ -112,6 +161,30 @@ const pageMeta = computed(() => {
 async function logout() {
   await auth.logout('/login');
 }
+
+function normalizeAdminSearch(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+async function navigateFromAdminSearch(item = adminSearchMatches.value[0]) {
+  if (!item) {
+    return;
+  }
+
+  adminSearchTerm.value = '';
+  adminSearchFocused.value = false;
+  await navigateTo(item.to);
+}
+
+function focusAdminSearch() {
+  adminSearchFocused.value = true;
+  adminSearchInput.value?.focus();
+}
 </script>
 
 <template>
@@ -145,8 +218,8 @@ async function logout() {
         </nav>
 
         <div class="admin-sidebar-footer">
-          <NuxtLink class="admin-ghost-link" to="/q/room-401-demo-token">System Logs</NuxtLink>
-          <span class="admin-ghost-link">Support</span>
+          <NuxtLink class="admin-ghost-link" to="/admin/tasks">Görev Akışı</NuxtLink>
+          <NuxtLink v-if="canViewQrAdmin" class="admin-ghost-link" to="/admin/qrs">QR Linkleri</NuxtLink>
 
           <div v-if="user" class="admin-user-card">
             <div>
@@ -160,15 +233,44 @@ async function logout() {
 
       <div class="admin-main">
         <header class="admin-topbar">
-          <label class="admin-search-shell">
-            <span class="admin-search-icon" aria-hidden="true"></span>
-            <input type="text" placeholder="Ara..." disabled />
-          </label>
+          <div class="admin-search-wrapper">
+            <form class="admin-search-shell" role="search" @submit.prevent="navigateFromAdminSearch()">
+              <span class="admin-search-icon" aria-hidden="true"></span>
+              <input
+                ref="adminSearchInput"
+                v-model="adminSearchTerm"
+                type="search"
+                placeholder="Sayfalarda ara..."
+                autocomplete="off"
+                @focus="adminSearchFocused = true"
+                @blur="adminSearchFocused = false"
+              />
+            </form>
+
+            <div v-if="showAdminSearchMatches" class="admin-search-results">
+              <button
+                v-for="item in adminSearchMatches"
+                :key="item.to"
+                class="admin-search-result"
+                type="button"
+                @mousedown.prevent="navigateFromAdminSearch(item)"
+              >
+                <strong>{{ item.meta }}</strong>
+                <span>{{ item.label }}</span>
+              </button>
+            </div>
+          </div>
 
           <div class="admin-topbar-meta">
-            <button class="admin-icon-button" type="button" aria-label="Bildirimler"></button>
-            <button class="admin-icon-button" type="button" aria-label="Ayarlar"></button>
-            <button class="admin-icon-button" type="button" aria-label="Kısayollar"></button>
+            <NuxtLink
+              v-for="item in adminTopbarLinks"
+              :key="item.label"
+              class="admin-icon-button"
+              :to="item.to"
+              :aria-label="item.label"
+              :title="item.label"
+            />
+            <button class="admin-icon-button" type="button" aria-label="Kısayollar" title="Kısayollar" @click="focusAdminSearch"></button>
 
             <div v-if="user" class="admin-topbar-user">
               <span class="admin-avatar">{{ user.fullName.slice(0, 1) }}</span>
