@@ -1,17 +1,27 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { EmptyState } from '../../components/EmptyState';
+import { AppButton } from '../../components/AppButton';
+import { AppInput } from '../../components/AppInput';
+import { FormModal, OptionChip } from '../../components/FormModal';
 import { LoadingView } from '../../components/LoadingView';
+import { MobileTopBar } from '../../components/MobileTopBar';
+import { SearchBar } from '../../components/SearchBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
+import { StatCard } from '../../components/StatCard';
 import { StatusBadge } from '../../components/StatusBadge';
 import { getApiErrorMessage } from '../../api/client';
+import { locationsApi } from '../../api/admin';
 import { qrsApi } from '../../api/qrs';
+import type { LocationTreeNode } from '../../types/admin';
 import type { QrListItem } from '../../types/qr';
 import { COLORS, LAYOUT } from '../../utils/constants';
 import { formatDateTime } from '../../utils/date';
 import type { QrsStackParamList } from '../../navigation/types';
+import { showUnavailableAction } from '../../utils/alerts';
 
 type Props = NativeStackScreenProps<QrsStackParamList, 'QrList'>;
 
@@ -20,6 +30,14 @@ export function QrListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locations, setLocations] = useState<LocationTreeNode[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [token, setToken] = useState('');
+  const [label, setLabel] = useState('');
+  const [locationId, setLocationId] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const loadItems = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -40,14 +58,69 @@ export function QrListScreen({ navigation }: Props) {
     }
   }, []);
 
+  const loadLocations = useCallback(async () => {
+    try {
+      const response = await locationsApi.tree();
+      setLocations(response);
+      const firstLocation = flattenLocations(response).find((location) => location.type !== 'ORGANIZATION');
+      setLocationId((current) => current || firstLocation?.id || '');
+    } catch (_error) {
+      return;
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void loadItems('initial');
-    }, [loadItems])
+      void loadLocations();
+    }, [loadItems, loadLocations])
   );
+
+  const summary = useMemo(
+    () => ({
+      total: items.length,
+      active: items.filter((item) => item.isActive).length,
+      passive: items.filter((item) => !item.isActive).length,
+      scans: items.reduce((total, item) => total + item.scanCount, 0)
+    }),
+    [items]
+  );
+  const locationOptions = useMemo(
+    () => flattenLocations(locations).filter((location) => location.type !== 'ORGANIZATION'),
+    [locations]
+  );
+
+  async function handleCreateQr() {
+    setFormError(null);
+
+    if (!token.trim() || !label.trim() || !locationId) {
+      setFormError('Token, etiket ve lokasyon zorunludur.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await qrsApi.create({
+        token: token.trim(),
+        label: label.trim(),
+        locationId,
+        isActive
+      });
+      setModalVisible(false);
+      setToken('');
+      setLabel('');
+      setIsActive(true);
+      await loadItems('refresh');
+    } catch (requestError) {
+      setFormError(getApiErrorMessage(requestError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <ScreenContainer style={styles.screen}>
+      <MobileTopBar />
       <FlatList
         contentContainerStyle={items.length ? styles.listContent : styles.emptyContent}
         data={items}
@@ -70,13 +143,34 @@ export function QrListScreen({ navigation }: Props) {
         }
         ListHeaderComponent={
           <View style={styles.headerGroup}>
-            <View style={styles.heroCard}>
-              <Text style={styles.heroEyebrow}>QR inventory</Text>
-              <Text style={styles.heroTitle}>Kodlar ve bagli lokasyonlar</Text>
-              <Text style={styles.heroDescription}>
-                Durum, scan sayisi ve son kullanimi kart bazli olarak kontrol et.
-              </Text>
+            <View style={styles.titleRow}>
+              <View style={styles.titleTextGroup}>
+                <Text style={styles.pageTitle}>QR Envanteri</Text>
+                <Text style={styles.pageSubtitle}>Sistemdeki tum QR kodlarini yonetin.</Text>
+              </View>
+              <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
+                <Ionicons name="add" size={18} color={COLORS.surface} />
+                <Text style={styles.newButtonText}>Yeni</Text>
+              </Pressable>
             </View>
+
+            <View style={styles.statGrid}>
+              <StatCard icon="qr-code-outline" label="Toplam QR" tone="blue" value={String(summary.total)} />
+              <StatCard icon="checkmark-circle-outline" label="Aktif" tone="green" value={String(summary.active)} />
+              <StatCard icon="alert-circle-outline" label="Pasif" tone="red" value={String(summary.passive)} />
+              <StatCard icon="bar-chart-outline" label="Okutulma" tone="blue" value={formatCompactNumber(summary.scans)} />
+            </View>
+
+            <View style={styles.searchRow}>
+              <View style={styles.searchWrap}>
+                <SearchBar placeholder="ID veya Lokasyon ara..." />
+              </View>
+              <Pressable onPress={() => showUnavailableAction('QR filtreleri')} style={styles.filterButton}>
+                <Ionicons name="options-outline" size={22} color={COLORS.heading} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.sectionTitle}>Son Eklenenler</Text>
           </View>
         }
         onRefresh={() => {
@@ -89,31 +183,73 @@ export function QrListScreen({ navigation }: Props) {
             style={({ pressed }) => [styles.card, pressed ? styles.cardPressed : null]}
           >
             <View style={styles.cardHead}>
-              <Text style={styles.cardToken}>{item.token}</Text>
+              <View style={styles.qrIconBox}>
+                <Ionicons name="qr-code-outline" size={24} color={item.isActive ? COLORS.heading : '#98a2b3'} />
+              </View>
+              <View style={styles.cardTitleGroup}>
+                <Text style={styles.cardToken}>{item.token}</Text>
+                <Text style={styles.cardLabel}>{item.label}</Text>
+                <Text style={styles.cardLocation}>
+                  {item.location.name}  /  {item.scanCount} scan
+                </Text>
+              </View>
               <StatusBadge label={item.isActive ? 'Aktif' : 'Pasif'} tone={item.isActive ? 'success' : 'danger'} />
             </View>
-            <Text style={styles.cardLabel}>{item.label}</Text>
-            <Text style={styles.cardLocation}>{item.location.name}</Text>
-            <Text style={styles.cardLocationHint}>{item.location.code}</Text>
-
-            <View style={styles.cardFooter}>
-              <View>
-                <Text style={styles.footerLabel}>Scan</Text>
-                <Text style={styles.footerValue}>{item.scanCount}</Text>
-              </View>
-              <View>
-                <Text style={styles.footerLabel}>Son kullanim</Text>
-                <Text style={styles.footerValue}>{formatDateTime(item.lastScannedAt)}</Text>
-              </View>
-            </View>
+            <Text style={styles.cardLocationHint}>Son kullanim: {formatDateTime(item.lastScannedAt)}</Text>
           </Pressable>
         )}
         showsVerticalScrollIndicator={false}
       />
 
       {loading ? <LoadingView description="QR kayitlari cekiliyor." title="QRlar yukleniyor" /> : null}
+      <FormModal
+        onClose={() => setModalVisible(false)}
+        subtitle="Webdeki QR olusturma mantigi ile ayni endpoint kullanilir."
+        title="Yeni QR"
+        visible={modalVisible}
+      >
+        <AppInput label="Token" onChangeText={setToken} placeholder="qr-2026-room-101" value={token} />
+        <AppInput label="Etiket" onChangeText={setLabel} placeholder="Oda 101 Giris QR" value={label} />
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Lokasyon</Text>
+          <View style={styles.optionWrap}>
+            {locationOptions.slice(0, 12).map((location) => (
+              <OptionChip
+                key={location.id}
+                label={`${location.name} (${location.code})`}
+                onPress={() => setLocationId(location.id)}
+                selected={locationId === location.id}
+              />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Durum</Text>
+          <View style={styles.optionWrap}>
+            <OptionChip label="Aktif" onPress={() => setIsActive(true)} selected={isActive} />
+            <OptionChip label="Pasif" onPress={() => setIsActive(false)} selected={!isActive} />
+          </View>
+        </View>
+
+        {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+        <AppButton label="QR Olustur" loading={submitting} onPress={handleCreateQr} rightIcon="checkmark-outline" />
+      </FormModal>
     </ScreenContainer>
   );
+}
+
+function flattenLocations(nodes: LocationTreeNode[]): LocationTreeNode[] {
+  return nodes.flatMap((node) => [node, ...flattenLocations(node.children)]);
+}
+
+function formatCompactNumber(value: number) {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1).replace('.', ',')}k`;
+  }
+
+  return String(value);
 }
 
 const styles = StyleSheet.create({
@@ -122,7 +258,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: 16,
+    paddingTop: 22,
+    paddingBottom: 16,
     gap: 14
   },
   emptyContent: {
@@ -132,34 +269,78 @@ const styles = StyleSheet.create({
     gap: 14
   },
   headerGroup: {
-    marginBottom: 14
+    gap: 18,
+    marginBottom: 2
   },
-  heroCard: {
-    backgroundColor: COLORS.heading,
-    borderRadius: 30,
-    padding: 24,
-    gap: 8
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12
   },
-  heroEyebrow: {
-    color: '#b7c6eb',
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  heroTitle: {
-    color: COLORS.surface,
-    fontSize: 30,
+  pageTitle: {
+    color: COLORS.heading,
+    fontSize: 25,
     fontWeight: '800'
   },
-  heroDescription: {
-    color: '#d4defa',
-    fontSize: 15,
-    lineHeight: 22
+  titleTextGroup: {
+    flex: 1,
+    flexShrink: 1
+  },
+  pageSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    marginTop: 4
+  },
+  newButton: {
+    flexShrink: 0,
+    minHeight: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 8,
+    backgroundColor: '#0b63ce',
+    paddingHorizontal: 12
+  },
+  newButtonText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  statGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  searchWrap: {
+    flex: 1
+  },
+  filterButton: {
+    width: 52,
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface
+  },
+  sectionTitle: {
+    color: COLORS.heading,
+    fontSize: 17,
+    fontWeight: '800',
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border
   },
   card: {
     backgroundColor: COLORS.surface,
-    borderRadius: 26,
-    padding: 20,
+    borderRadius: 10,
+    padding: 14,
     gap: 10,
     borderWidth: 1,
     borderColor: COLORS.border
@@ -169,45 +350,60 @@ const styles = StyleSheet.create({
   },
   cardHead: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 10
+    alignItems: 'center',
+    gap: 12
+  },
+  qrIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: '#f2f5f9'
+  },
+  cardTitleGroup: {
+    flex: 1
   },
   cardToken: {
-    flex: 1,
-    color: COLORS.heading,
-    fontSize: 18,
-    fontWeight: '800'
-  },
-  cardLabel: {
-    color: COLORS.text,
-    fontSize: 15,
+    color: COLORS.textMuted,
+    fontSize: 12,
     fontWeight: '700'
   },
-  cardLocation: {
+  cardLabel: {
     color: COLORS.heading,
-    fontSize: 20,
-    fontWeight: '800'
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 3
+  },
+  cardLocation: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 5
   },
   cardLocationHint: {
     color: COLORS.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600'
   },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-    paddingTop: 10
+  formSection: {
+    gap: 10
   },
-  footerLabel: {
+  formLabel: {
     color: COLORS.textMuted,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     textTransform: 'uppercase'
   },
-  footerValue: {
-    color: COLORS.heading,
+  optionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  formError: {
+    color: COLORS.danger,
     fontSize: 14,
     fontWeight: '700'
   }

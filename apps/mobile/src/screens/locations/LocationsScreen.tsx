@@ -1,20 +1,35 @@
 import { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LocationType } from '@lbrtw/shared';
 import { useFocusEffect } from '@react-navigation/native';
 import { getApiErrorMessage } from '../../api/client';
 import { locationsApi } from '../../api/admin';
+import { AppButton } from '../../components/AppButton';
+import { AppInput } from '../../components/AppInput';
 import { EmptyState } from '../../components/EmptyState';
+import { FormModal, OptionChip } from '../../components/FormModal';
 import { LoadingView } from '../../components/LoadingView';
+import { MobileTopBar } from '../../components/MobileTopBar';
+import { SearchBar } from '../../components/SearchBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { LocationTreeNode } from '../../types/admin';
 import { COLORS, LAYOUT } from '../../utils/constants';
+import { showUnavailableAction } from '../../utils/alerts';
 
 export function LocationsScreen() {
   const [locations, setLocations] = useState<LocationTreeNode[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [type, setType] = useState<LocationType>(LocationType.ROOM);
+  const [parentId, setParentId] = useState('');
 
   const loadLocations = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -26,6 +41,8 @@ export function LocationsScreen() {
     try {
       const response = await locationsApi.tree();
       setLocations(response);
+      const firstParent = flattenLocationNodes(response)[0];
+      setParentId((current) => current || firstParent?.id || '');
       setError(null);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError));
@@ -42,20 +59,55 @@ export function LocationsScreen() {
   );
 
   const totals = useMemo(() => getLocationTotals(locations), [locations]);
-  const flatLocations = useMemo(() => flattenLocationNodes(locations), [locations]);
+  const parentOptions = useMemo(() => flattenLocationNodes(locations), [locations]);
+
+  async function handleCreateLocation() {
+    setFormError(null);
+
+    if (!name.trim() || !code.trim() || !parentId) {
+      setFormError('Ad, kod ve parent lokasyon zorunludur.');
+      return;
+    }
+
+    const parent = parentOptions.find((item) => item.id === parentId);
+    setSubmitting(true);
+    try {
+      await locationsApi.create({
+        name: name.trim(),
+        code: code.trim(),
+        type,
+        parentId,
+        organizationId: parent?.organizationId
+      });
+      setModalVisible(false);
+      setName('');
+      setCode('');
+      setType(LocationType.ROOM);
+      await loadLocations('refresh');
+    } catch (requestError) {
+      setFormError(getApiErrorMessage(requestError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <ScreenContainer style={styles.screen}>
+      <MobileTopBar />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl onRefresh={() => void loadLocations('refresh')} refreshing={refreshing} />}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>Lokasyon agaci</Text>
-          <Text style={styles.heroTitle}>Tesis yapisi</Text>
-          <Text style={styles.heroDescription}>Kurum, kat, oda ve alan hiyerarsisini QR baglariyla birlikte izle.</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>Lokasyonlar</Text>
+          <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
+            <Ionicons name="add" size={18} color={COLORS.surface} />
+            <Text style={styles.newButtonText}>Yeni</Text>
+          </Pressable>
         </View>
+
+        <SearchBar placeholder="Lokasyon Ara..." />
 
         <View style={styles.summaryGrid}>
           <SummaryTile label="Lokasyon" value={String(totals.locations)} />
@@ -78,49 +130,100 @@ export function LocationsScreen() {
         ) : null}
 
         <View style={styles.treeList}>
-          {flatLocations.map(({ node, depth }) => (
-            <LocationNodeRow depth={depth} key={node.id} node={node} />
+          {locations.map((node) => (
+            <LocationOrganizationCard key={node.id} node={node} />
           ))}
         </View>
       </ScrollView>
+      <FormModal
+        onClose={() => setModalVisible(false)}
+        subtitle="Webdeki lokasyon olusturma endpointi kullanilir."
+        title="Yeni Lokasyon"
+        visible={modalVisible}
+      >
+        <AppInput label="Ad" onChangeText={setName} placeholder="Toplanti Odasi A" value={name} />
+        <AppInput autoCapitalize="characters" label="Kod" onChangeText={setCode} placeholder="ROOM-A" value={code} />
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Tip</Text>
+          <View style={styles.optionWrap}>
+            {[LocationType.FLOOR, LocationType.ROOM, LocationType.AREA].map((item) => (
+              <OptionChip key={item} label={item} onPress={() => setType(item)} selected={type === item} />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Parent Lokasyon</Text>
+          <View style={styles.optionWrap}>
+            {parentOptions.slice(0, 12).map((location) => (
+              <OptionChip
+                key={location.id}
+                label={`${location.name} (${location.code})`}
+                onPress={() => setParentId(location.id)}
+                selected={parentId === location.id}
+              />
+            ))}
+          </View>
+        </View>
+
+        {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+        <AppButton label="Lokasyon Olustur" loading={submitting} onPress={handleCreateLocation} rightIcon="checkmark-outline" />
+      </FormModal>
     </ScreenContainer>
   );
 }
 
-function LocationNodeRow({ node, depth }: { node: LocationTreeNode; depth: number }) {
-  const depthLabel = depth === 0 ? 'Kurum' : depth === 1 ? 'Kat' : depth === 2 ? 'Oda' : 'Alan';
+function LocationOrganizationCard({ node }: { node: LocationTreeNode }) {
+  return (
+    <View style={styles.orgCard}>
+      <View style={styles.orgHeader}>
+        <View style={styles.orgIcon}>
+          <Ionicons name="business-outline" size={24} color={COLORS.heading} />
+        </View>
+        <View style={styles.orgTitleGroup}>
+          <Text style={styles.orgName}>{node.name}</Text>
+          <Text style={styles.orgMeta}>Ana Organizasyon</Text>
+        </View>
+        <StatusBadge label="Aktif" tone="success" />
+      </View>
+
+      <View style={styles.branchArea}>
+        <View style={styles.branchLine} />
+        <View style={styles.branchCards}>
+          {node.children.length ? (
+            node.children.map((child) => <LocationGroupCard key={child.id} node={child} />)
+          ) : (
+            <LocationGroupCard node={node} />
+          )}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function LocationGroupCard({ node }: { node: LocationTreeNode }) {
+  const visibleChildren = node.children.length ? node.children : node.qrCodes.map((qr) => ({
+    id: qr.id,
+    name: qr.label,
+    code: qr.token,
+    qrCodes: []
+  }));
 
   return (
-    <View style={styles.nodeRow}>
-      <View style={styles.depthRail}>
-        <View style={[styles.depthDot, depth === 0 ? styles.depthDotRoot : null]} />
-        <View style={styles.depthLine} />
+    <View style={styles.groupCard}>
+      <View style={styles.groupHeader}>
+        <Ionicons name="layers-outline" size={16} color={COLORS.heading} />
+        <Text style={styles.groupTitle}>{node.name}</Text>
       </View>
 
-      <View style={[styles.nodeContent, { paddingLeft: Math.min(depth * 12, 36) }]}>
-        <View style={styles.nodeHeader}>
-          <View style={styles.nodeTitleGroup}>
-            <Text style={styles.nodeType}>{depthLabel}</Text>
-            <Text style={styles.nodeName}>{node.name}</Text>
-            <Text style={styles.nodeMeta}>
-              {node.code} / {node.type}
-            </Text>
-          </View>
-          <StatusBadge label={`${node.qrCodes.length} QR`} tone={node.qrCodes.length ? 'info' : 'neutral'} />
+      {visibleChildren.slice(0, 4).map((child) => (
+        <View key={child.id} style={styles.locationLeaf}>
+          <Ionicons name="square-outline" size={14} color={COLORS.textMuted} />
+          <Text numberOfLines={1} style={styles.leafName}>{child.name}</Text>
+          <Text style={styles.leafCount}>{'qrCodes' in child ? child.qrCodes.length : 1} Envanter</Text>
         </View>
-
-        {node.qrCodes.length ? (
-          <View style={styles.qrRow}>
-            {node.qrCodes.slice(0, 3).map((qr) => (
-              <View key={qr.id} style={styles.qrChip}>
-                <Text numberOfLines={1} style={styles.qrChipText}>
-                  {qr.label}
-                </Text>
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </View>
+      ))}
     </View>
   );
 }
@@ -150,11 +253,8 @@ function getLocationTotals(nodes: LocationTreeNode[]) {
   return { locations, qrs };
 }
 
-function flattenLocationNodes(nodes: LocationTreeNode[], depth = 0): Array<{ node: LocationTreeNode; depth: number }> {
-  return nodes.flatMap((node) => [
-    { node, depth },
-    ...flattenLocationNodes(node.children, depth + 1)
-  ]);
+function flattenLocationNodes(nodes: LocationTreeNode[]): LocationTreeNode[] {
+  return nodes.flatMap((node) => [node, ...flattenLocationNodes(node.children)]);
 }
 
 const styles = StyleSheet.create({
@@ -163,30 +263,35 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: 16,
+    paddingTop: 22,
+    paddingBottom: 16,
     gap: 14
   },
-  heroCard: {
-    backgroundColor: COLORS.heading,
-    borderRadius: 24,
-    padding: 22,
-    gap: 8
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
   },
-  heroEyebrow: {
-    color: '#b7c6eb',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  heroTitle: {
-    color: COLORS.surface,
-    fontSize: 30,
+  pageTitle: {
+    color: COLORS.heading,
+    fontSize: 25,
     fontWeight: '800'
   },
-  heroDescription: {
-    color: '#d4defa',
-    fontSize: 15,
-    lineHeight: 22
+  newButton: {
+    flexShrink: 0,
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12
+  },
+  newButtonText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: '800'
   },
   summaryGrid: {
     flexDirection: 'row',
@@ -212,87 +317,106 @@ const styles = StyleSheet.create({
     fontWeight: '800'
   },
   treeList: {
+    gap: 16
+  },
+  orgCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingVertical: 6,
-    overflow: 'hidden'
+    padding: 16,
+    gap: 14
   },
-  nodeRow: {
+  orgHeader: {
     flexDirection: 'row',
-    paddingHorizontal: 14,
-    paddingVertical: 10
-  },
-  depthRail: {
-    width: 18,
     alignItems: 'center'
   },
-  depthDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 999,
-    backgroundColor: '#9aa8c7',
-    marginTop: 7
+  orgIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primarySoft,
+    marginRight: 12
   },
-  depthDotRoot: {
-    width: 12,
-    height: 12,
-    backgroundColor: COLORS.heading
-  },
-  depthLine: {
-    flex: 1,
-    width: 1,
-    minHeight: 42,
-    backgroundColor: COLORS.border,
-    marginTop: 4
-  },
-  nodeContent: {
-    flex: 1,
-    gap: 9
-  },
-  nodeHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10
-  },
-  nodeTitleGroup: {
+  orgTitleGroup: {
     flex: 1
   },
-  nodeType: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    marginBottom: 2
-  },
-  nodeName: {
-    color: COLORS.heading,
+  orgName: {
+    color: COLORS.text,
     fontSize: 17,
     fontWeight: '800'
   },
-  nodeMeta: {
+  orgMeta: {
     color: COLORS.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
     marginTop: 3
   },
-  qrRow: {
+  branchArea: {
+    flexDirection: 'row',
+    gap: 14
+  },
+  branchLine: {
+    width: 1,
+    backgroundColor: COLORS.border,
+    marginLeft: 17
+  },
+  branchCards: {
+    flex: 1,
+    gap: 12
+  },
+  groupCard: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    gap: 12
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  groupTitle: {
+    color: COLORS.heading,
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  locationLeaf: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  leafName: {
+    flex: 1,
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  leafCount: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '700'
+  },
+  formSection: {
+    gap: 10
+  },
+  formLabel: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  optionWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8
   },
-  qrChip: {
-    maxWidth: '100%',
-    borderRadius: 999,
-    backgroundColor: COLORS.infoSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 6
-  },
-  qrChipText: {
-    color: COLORS.heading,
-    fontSize: 12,
+  formError: {
+    color: COLORS.danger,
+    fontSize: 14,
     fontWeight: '700'
   }
 });

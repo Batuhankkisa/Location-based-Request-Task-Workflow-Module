@@ -11,15 +11,15 @@ export const API_BASE_URL = envApiBaseUrl.trim().replace(/\/$/, '');
 export const AUTH_TOKEN_KEY = 'lbrtw.mobile.access_token';
 
 export const COLORS = {
-  background: '#f3f5fb',
+  background: '#f4f7fb',
   surface: '#ffffff',
-  surfaceMuted: '#edf2ff',
-  text: '#0f172a',
-  textMuted: '#667085',
-  heading: '#13213d',
-  border: '#dce3f4',
-  primary: '#101828',
-  primarySoft: '#dce4ff',
+  surfaceMuted: '#eef3fa',
+  text: '#1f232b',
+  textMuted: '#5f6673',
+  heading: '#071326',
+  border: '#d9dee7',
+  primary: '#071326',
+  primarySoft: '#d9e7ff',
   success: '#1f8f4d',
   successSoft: '#e6f7ed',
   warning: '#e58a00',

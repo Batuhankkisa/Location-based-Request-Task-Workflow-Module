@@ -58,3 +58,30 @@ export interface LocationTreeNode {
   qrCodes: LocationQrSummary[];
   children: LocationTreeNode[];
 }
+
+export interface CreateOrganizationPayload {
+  name: string;
+  code: string;
+  type: OrganizationType;
+  isActive?: boolean;
+  telegramEnabled?: boolean;
+  telegramChatId?: string;
+  telegramNotificationThreadId?: string;
+}
+
+export interface CreateUserPayload {
+  email: string;
+  fullName: string;
+  role: Role;
+  password: string;
+  organizationId?: string;
+  isActive?: boolean;
+}
+
+export interface CreateLocationPayload {
+  organizationId?: string;
+  name: string;
+  code: string;
+  type: LocationType;
+  parentId: string;
+}

@@ -1,22 +1,39 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Role } from '@lbrtw/shared';
 import { useFocusEffect } from '@react-navigation/native';
-import { usersApi } from '../../api/admin';
+import { organizationsApi, usersApi } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
+import { AppButton } from '../../components/AppButton';
+import { AppInput } from '../../components/AppInput';
 import { EmptyState } from '../../components/EmptyState';
+import { FormModal, OptionChip } from '../../components/FormModal';
 import { LoadingView } from '../../components/LoadingView';
+import { SearchBar } from '../../components/SearchBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
+import { StatCard } from '../../components/StatCard';
 import { StatusBadge } from '../../components/StatusBadge';
-import type { AdminUser } from '../../types/admin';
+import type { AdminOrganization, AdminUser } from '../../types/admin';
 import { COLORS, LAYOUT } from '../../utils/constants';
 import { getRoleLabel } from '../../utils/role';
+import { showUnavailableAction } from '../../utils/alerts';
 
 export function UsersScreen() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('Admin123!');
+  const [role, setRole] = useState<Role>(Role.STAFF);
+  const [organizationId, setOrganizationId] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const loadUsers = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -37,10 +54,21 @@ export function UsersScreen() {
     }
   }, []);
 
+  const loadOrganizations = useCallback(async () => {
+    try {
+      const response = await organizationsApi.list();
+      setOrganizations(response);
+      setOrganizationId((current) => current || response[0]?.id || '');
+    } catch (_error) {
+      return;
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       void loadUsers('initial');
-    }, [loadUsers])
+      void loadOrganizations();
+    }, [loadUsers, loadOrganizations])
   );
 
   const summary = useMemo(
@@ -52,23 +80,95 @@ export function UsersScreen() {
     [users]
   );
 
+  async function handleCreateUser() {
+    setFormError(null);
+
+    if (!fullName.trim() || !email.trim() || !password.trim()) {
+      setFormError('Ad soyad, email ve sifre zorunludur.');
+      return;
+    }
+
+    if (role !== Role.ADMIN && !organizationId) {
+      setFormError('Supervisor ve staff kullanicilari icin kurum zorunludur.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await usersApi.create({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        password: password.trim(),
+        role,
+        organizationId: role === Role.ADMIN ? undefined : organizationId,
+        isActive
+      });
+      setModalVisible(false);
+      setFullName('');
+      setEmail('');
+      setPassword('Admin123!');
+      setRole(Role.STAFF);
+      setIsActive(true);
+      await loadUsers('refresh');
+    } catch (requestError) {
+      setFormError(getApiErrorMessage(requestError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <ScreenContainer style={styles.screen}>
       <FlatList
+        columnWrapperStyle={styles.columnWrapper}
         contentContainerStyle={users.length ? styles.content : styles.emptyContent}
         data={users}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.headerGroup}>
-            <View style={styles.heroCard}>
-              <Text style={styles.heroEyebrow}>Kullanicilar</Text>
-              <Text style={styles.heroTitle}>Rol ve kurum</Text>
-              <Text style={styles.heroDescription}>Admin, supervisor ve staff hesaplarini mobilde takip et.</Text>
+            <View style={styles.topLine}>
+              <Text style={styles.panelTitle}>Yonetim Paneli</Text>
+              <View style={styles.profileGroup}>
+                <View>
+                  <Text style={styles.profileTitle}>Admin Profil</Text>
+                  <Text style={styles.profileSubtitle}>Yonetici</Text>
+                </View>
+                <View style={styles.profileAvatar}>
+                  <Text style={styles.profileAvatarText}>A</Text>
+                </View>
+              </View>
             </View>
+
+            <View style={styles.titleRow}>
+              <View style={styles.titleTextGroup}>
+                <Text style={styles.pageTitle}>Supervisor ve Staff Hesaplari</Text>
+                <Text style={styles.pageSubtitle}>Sistemdeki tum operasyonel kullanicilari yonetin.</Text>
+              </View>
+              <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
+                <Ionicons name="add" size={18} color={COLORS.surface} />
+                <Text style={styles.newButtonText}>Yeni Kullanici Ekle</Text>
+              </Pressable>
+            </View>
+
             <View style={styles.summaryGrid}>
-              <SummaryTile label="Admin" value={String(summary.admins)} />
-              <SummaryTile label="Supervisor" value={String(summary.supervisors)} />
-              <SummaryTile label="Staff" value={String(summary.staff)} />
+              <StatCard icon="people-outline" label="Toplam" value={String(users.length)} />
+              <StatCard icon="id-card-outline" label="Supervisor" tone="blue" value={String(summary.supervisors)} />
+              <StatCard icon="people-circle-outline" label="Staff" value={String(summary.staff)} />
+              <StatCard icon="shield-outline" label="Global Admin" tone="red" value={String(summary.admins)} />
+            </View>
+
+            <View style={styles.filterPanel}>
+              <View style={styles.searchWrap}>
+                <SearchBar placeholder="Isim, email veya kurum ara..." />
+              </View>
+              <Pressable onPress={() => showUnavailableAction('Rol secimi')} style={styles.roleSelect}>
+                <Text style={styles.roleSelectText}>Tum Roller</Text>
+                <Ionicons name="chevron-down" size={14} color={COLORS.text} />
+              </Pressable>
+              <Pressable onPress={() => showUnavailableAction('Kullanici filtresi')} style={styles.filterButton}>
+                <Ionicons name="filter-outline" size={17} color={COLORS.text} />
+                <Text style={styles.filterText}>Filtrele</Text>
+              </Pressable>
             </View>
           </View>
         }
@@ -83,43 +183,106 @@ export function UsersScreen() {
           )
         }
         onRefresh={() => void loadUsers('refresh')}
+        numColumns={2}
         refreshing={refreshing}
         renderItem={({ item }) => <UserCard user={item} />}
         showsVerticalScrollIndicator={false}
       />
       {loading ? <LoadingView description="Kullanicilar aliniyor." title="Yukleniyor" /> : null}
+      <FormModal
+        onClose={() => setModalVisible(false)}
+        subtitle="Webdeki kullanici olusturma mantigi ile ayni endpoint kullanilir."
+        title="Yeni Kullanici"
+        visible={modalVisible}
+      >
+        <AppInput label="Ad Soyad" onChangeText={setFullName} placeholder="Mehmet Can" value={fullName} />
+        <AppInput
+          autoCapitalize="none"
+          keyboardType="email-address"
+          label="Email"
+          onChangeText={setEmail}
+          placeholder="m.can@example.com"
+          value={email}
+        />
+        <AppInput label="Sifre" onChangeText={setPassword} placeholder="Admin123!" secureTextEntry value={password} />
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Rol</Text>
+          <View style={styles.optionWrap}>
+            {[Role.STAFF, Role.SUPERVISOR, Role.ADMIN].map((item) => (
+              <OptionChip key={item} label={getRoleLabel(item)} onPress={() => setRole(item)} selected={role === item} />
+            ))}
+          </View>
+        </View>
+
+        {role !== Role.ADMIN ? (
+          <View style={styles.formSection}>
+            <Text style={styles.formLabel}>Kurum</Text>
+            <View style={styles.optionWrap}>
+              {organizations.map((organization) => (
+                <OptionChip
+                  key={organization.id}
+                  label={organization.name}
+                  onPress={() => setOrganizationId(organization.id)}
+                  selected={organizationId === organization.id}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Durum</Text>
+          <View style={styles.optionWrap}>
+            <OptionChip label="Aktif" onPress={() => setIsActive(true)} selected={isActive} />
+            <OptionChip label="Pasif" onPress={() => setIsActive(false)} selected={!isActive} />
+          </View>
+        </View>
+
+        {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+        <AppButton label="Kullanici Olustur" loading={submitting} onPress={handleCreateUser} rightIcon="checkmark-outline" />
+      </FormModal>
     </ScreenContainer>
   );
 }
 
 function UserCard({ user }: { user: AdminUser }) {
+  const initials = user.fullName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
+        <View style={[styles.userAvatar, user.role === Role.ADMIN ? styles.adminAvatar : null]}>
+          <Text style={[styles.userAvatarText, user.role === Role.ADMIN ? styles.adminAvatarText : null]}>{initials}</Text>
+        </View>
         <View style={styles.cardTitleGroup}>
-          <Text style={styles.cardTitle}>{user.fullName}</Text>
+          <Text numberOfLines={1} style={styles.cardTitle}>{user.fullName}</Text>
           <Text style={styles.cardMeta}>{user.email}</Text>
         </View>
-        <StatusBadge label={user.isActive ? 'Aktif' : 'Pasif'} tone={user.isActive ? 'success' : 'danger'} />
+        <Ionicons name="ellipsis-vertical" size={16} color={COLORS.textMuted} />
       </View>
 
-      <View style={styles.infoRow}>
-        <Text style={styles.infoLabel}>Rol</Text>
-        <Text style={styles.infoValue}>{getRoleLabel(user.role)}</Text>
+      <View style={styles.infoGrid}>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoLabel}>Rol</Text>
+          <Text style={[styles.infoValue, user.role === Role.ADMIN ? styles.adminRoleText : null]}>
+            {getRoleLabel(user.role)}
+          </Text>
+        </View>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoLabel}>Durum</Text>
+          <Text style={styles.infoValue}>{user.isActive ? 'Aktif' : 'Pasif'}</Text>
+        </View>
       </View>
-      <View style={styles.infoRow}>
+      <View style={styles.orgBox}>
         <Text style={styles.infoLabel}>Kurum</Text>
-        <Text style={styles.infoValue}>{user.organization?.name ?? 'Global admin'}</Text>
+        <Text numberOfLines={1} style={styles.orgValue}>{user.organization?.name ?? 'Tum Sistem'}</Text>
       </View>
-    </View>
-  );
-}
-
-function SummaryTile({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.summaryTile}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
     </View>
   );
 }
@@ -130,7 +293,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: 16,
+    paddingVertical: 22,
     gap: 14
   },
   emptyContent: {
@@ -140,101 +303,238 @@ const styles = StyleSheet.create({
     gap: 14
   },
   headerGroup: {
-    gap: 14,
+    gap: 18,
     marginBottom: 2
   },
-  heroCard: {
-    backgroundColor: COLORS.heading,
-    borderRadius: 24,
-    padding: 22,
-    gap: 8
+  topLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
   },
-  heroEyebrow: {
-    color: '#b7c6eb',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  heroTitle: {
-    color: COLORS.surface,
-    fontSize: 30,
+  panelTitle: {
+    color: COLORS.heading,
+    fontSize: 18,
     fontWeight: '800'
   },
-  heroDescription: {
-    color: '#d4defa',
+  profileGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  profileTitle: {
+    color: COLORS.text,
     fontSize: 15,
-    lineHeight: 22
+    textAlign: 'right'
+  },
+  profileSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    textAlign: 'right',
+    marginTop: 2
+  },
+  profileAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#c7d2e8'
+  },
+  profileAvatarText: {
+    color: COLORS.heading,
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  titleTextGroup: {
+    flex: 1,
+    flexShrink: 1
+  },
+  pageTitle: {
+    color: COLORS.text,
+    fontSize: 25,
+    fontWeight: '800',
+    lineHeight: 31
+  },
+  pageSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 5
+  },
+  newButton: {
+    flexShrink: 0,
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 11
+  },
+  newButtonText: {
+    color: COLORS.surface,
+    fontSize: 12,
+    fontWeight: '800'
   },
   summaryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10
   },
-  summaryTile: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
+  filterPanel: {
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 14
+    backgroundColor: COLORS.surface,
+    padding: 12,
+    gap: 10
   },
-  summaryLabel: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase'
+  searchWrap: {
+    flex: 1
   },
-  summaryValue: {
-    color: COLORS.heading,
-    fontSize: 24,
-    fontWeight: '800'
+  roleSelect: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12
+  },
+  roleSelectText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '600'
+  },
+  filterButton: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 8,
+    backgroundColor: '#eef1f6'
+  },
+  filterText: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  columnWrapper: {
+    gap: 6
   },
   card: {
+    flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 16,
+    padding: 12,
     gap: 12
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    gap: 10
+    gap: 8
+  },
+  userAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#cdd5e5'
+  },
+  adminAvatar: {
+    backgroundColor: COLORS.dangerSoft
+  },
+  userAvatarText: {
+    color: COLORS.heading,
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  adminAvatarText: {
+    color: COLORS.danger
   },
   cardTitleGroup: {
     flex: 1
   },
   cardTitle: {
     color: COLORS.heading,
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800'
   },
   cardMeta: {
     color: COLORS.textMuted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: 3
   },
-  infoRow: {
+  infoGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    borderRadius: 14,
-    backgroundColor: COLORS.surfaceMuted,
-    padding: 12
+    gap: 6
+  },
+  infoBox: {
+    flex: 1,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e5eaf1',
+    backgroundColor: '#f5f7fa',
+    padding: 8
   },
   infoLabel: {
     color: COLORS.textMuted,
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase'
   },
   infoValue: {
-    flex: 1,
     color: COLORS.heading,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
-    textAlign: 'right'
+    marginTop: 5
+  },
+  adminRoleText: {
+    color: COLORS.danger
+  },
+  orgBox: {
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#e5eaf1',
+    backgroundColor: '#f5f7fa',
+    padding: 8
+  },
+  orgValue: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6
+  },
+  formSection: {
+    gap: 10
+  },
+  formLabel: {
+    color: COLORS.textMuted,
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+  optionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  formError: {
+    color: COLORS.danger,
+    fontSize: 14,
+    fontWeight: '700'
   }
 });

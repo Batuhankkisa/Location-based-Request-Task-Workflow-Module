@@ -1,4 +1,4 @@
-import type { QrDetail, QrListItem, QrScanLog } from '../types/qr';
+import type { CreateQrPayload, QrDetail, QrListItem, QrScanLog } from '../types/qr';
 import { apiClient, unwrapResponse } from './client';
 
 export const qrsApi = {
@@ -12,6 +12,10 @@ export const qrsApi = {
 
   getScanLogs(qrId: string) {
     return unwrapResponse<QrScanLog[]>(apiClient.get(`/qr-codes/${qrId}/scan-logs`));
+  },
+
+  create(payload: CreateQrPayload) {
+    return unwrapResponse<QrDetail>(apiClient.post('/qr-codes', payload));
   },
 
   activate(qrId: string) {

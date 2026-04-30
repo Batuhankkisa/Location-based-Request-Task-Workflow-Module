@@ -1,16 +1,22 @@
-import { useCallback, useState } from 'react';
-import { Pressable, FlatList, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { EmptyState } from '../../components/EmptyState';
 import { LoadingView } from '../../components/LoadingView';
+import { MobileTopBar } from '../../components/MobileTopBar';
+import { SearchBar } from '../../components/SearchBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
+import { StatCard } from '../../components/StatCard';
 import { StatusBadge } from '../../components/StatusBadge';
 import { tasksApi } from '../../api/tasks';
 import { getApiErrorMessage } from '../../api/client';
 import type { TaskListItem } from '../../types/task';
 import { formatDateTime, formatRelativeLabel } from '../../utils/date';
 import { COLORS, LAYOUT, TASK_STATUS_META } from '../../utils/constants';
+import { TaskStatus } from '@lbrtw/shared';
+import { showUnavailableAction } from '../../utils/alerts';
 import type { TasksStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<TasksStackParamList, 'TaskList'>;
@@ -46,8 +52,19 @@ export function TaskListScreen({ navigation }: Props) {
     }, [loadTasks])
   );
 
+  const summary = useMemo(
+    () => ({
+      total: tasks.length,
+      newTasks: tasks.filter((task) => task.status === TaskStatus.NEW).length,
+      inProgress: tasks.filter((task) => task.status === TaskStatus.IN_PROGRESS).length,
+      waiting: tasks.filter((task) => task.status === TaskStatus.DONE_WAITING_APPROVAL).length
+    }),
+    [tasks]
+  );
+
   return (
     <ScreenContainer style={styles.screen}>
+      <MobileTopBar />
       <FlatList
         contentContainerStyle={tasks.length ? styles.listContent : styles.emptyContent}
         data={tasks}
@@ -70,19 +87,35 @@ export function TaskListScreen({ navigation }: Props) {
         }
         ListHeaderComponent={
           <View style={styles.headerGroup}>
-            <View style={styles.heroCard}>
-              <Text style={styles.heroEyebrow}>Acik gorevler</Text>
-              <Text style={styles.heroTitle}>Task akisi</Text>
-              <Text style={styles.heroDescription}>
-                QR talebinden dogan isler bu listede durum badge&apos;i ile gorunur.
-              </Text>
+            <View style={styles.titleRow}>
+              <View style={styles.titleTextGroup}>
+                <Text style={styles.pageTitle}>Gorevler</Text>
+                <Text style={styles.pageSubtitle}>Tum aktif gorevleri goruntuleyin ve yonetin.</Text>
+              </View>
+              <Pressable onPress={() => showUnavailableAction('Yeni gorev')} style={styles.newButton}>
+                <Ionicons name="add" size={18} color={COLORS.surface} />
+                <Text style={styles.newButtonText}>Yeni</Text>
+              </Pressable>
             </View>
 
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Toplam</Text>
-              <Text style={styles.summaryValue}>{tasks.length}</Text>
-              <Text style={styles.summaryHint}>Pull to refresh ile listeyi guncelleyebilirsin.</Text>
+            <View style={styles.statGrid}>
+              <StatCard icon="clipboard-outline" label="Toplam" value={String(summary.total)} />
+              <StatCard icon="sparkles-outline" label="Yeni" tone="blue" value={String(summary.newTasks)} />
+              <StatCard icon="time-outline" label="Devam Eden" value={String(summary.inProgress)} />
+              <StatCard icon="hourglass-outline" label="Onay Bekleyen" value={String(summary.waiting)} />
             </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.searchRow}>
+                <View style={styles.searchIconOnly}>
+                  <Ionicons name="search-outline" size={21} color="#687385" />
+                </View>
+                <FilterChip active label="Tumu" />
+                <FilterChip label="Housekeeping" />
+                <FilterChip label="Teknik" />
+                <FilterChip label="Guvenlik" />
+              </View>
+            </ScrollView>
           </View>
         }
         onRefresh={() => {
@@ -98,22 +131,34 @@ export function TaskListScreen({ navigation }: Props) {
               style={({ pressed }) => [styles.taskCard, pressed ? styles.taskCardPressed : null]}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.locationName}>{item.location.name}</Text>
-                <StatusBadge label={statusMeta.label} tone={statusMeta.tone} />
+                <View style={styles.statusRow}>
+                  <StatusBadge label={statusMeta.label} tone={statusMeta.tone} />
+                  <Text style={styles.createdText}>{formatDateTime(item.createdAt)}</Text>
+                </View>
+                <Ionicons name="ellipsis-vertical" size={18} color="#6b7280" />
               </View>
-              <Text style={styles.locationCode}>{item.location.code}</Text>
+              <Text style={styles.locationName}>{item.request.requestText || item.location.name}</Text>
               <Text numberOfLines={3} style={styles.requestText}>
-                {item.request.requestText}
+                {item.location.name}
               </Text>
 
-              <View style={styles.cardFooter}>
-                <View>
-                  <Text style={styles.footerLabel}>Olusma</Text>
-                  <Text style={styles.footerValue}>{formatDateTime(item.createdAt)}</Text>
+              <View style={styles.tagRow}>
+                <View style={styles.tag}>
+                  <Ionicons name="business-outline" size={13} color={COLORS.textMuted} />
+                  <Text style={styles.tagText}>{item.location.code}</Text>
                 </View>
-                <View>
-                  <Text style={styles.footerLabel}>Gorev yasi</Text>
-                  <Text style={styles.footerValue}>{formatRelativeLabel(item.createdAt)}</Text>
+                <View style={styles.tag}>
+                  <Ionicons name="location-outline" size={13} color={COLORS.textMuted} />
+                  <Text style={styles.tagText}>{formatRelativeLabel(item.createdAt)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardActionRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{(item.assignedTo ?? 'M').slice(0, 1).toUpperCase()}</Text>
+                </View>
+                <View style={styles.detailButton}>
+                  <Text style={styles.detailButtonText}>Detay</Text>
                 </View>
               </View>
             </Pressable>
@@ -127,13 +172,25 @@ export function TaskListScreen({ navigation }: Props) {
   );
 }
 
+function FilterChip({ label, active = false }: { label: string; active?: boolean }) {
+  return (
+    <Pressable
+      onPress={() => showUnavailableAction(`${label} filtresi`)}
+      style={({ pressed }) => [styles.filterChip, active ? styles.filterChipActive : null, pressed ? styles.pressed : null]}
+    >
+      <Text style={[styles.filterChipText, active ? styles.filterChipTextActive : null]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: {
     paddingHorizontal: 0
   },
   listContent: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: 16,
+    paddingTop: 22,
+    paddingBottom: 16,
     gap: 14
   },
   emptyContent: {
@@ -143,58 +200,87 @@ const styles = StyleSheet.create({
     gap: 14
   },
   headerGroup: {
-    gap: 14,
-    marginBottom: 14
+    gap: 18,
+    marginBottom: 2
   },
-  heroCard: {
-    backgroundColor: COLORS.heading,
-    borderRadius: 30,
-    padding: 24,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  pageTitle: {
+    color: COLORS.heading,
+    fontSize: 31,
+    fontWeight: '800'
+  },
+  titleTextGroup: {
+    flex: 1,
+    flexShrink: 1
+  },
+  pageSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 14,
+    marginTop: 4
+  },
+  newButton: {
+    width: 86,
+    flexShrink: 0,
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 8,
+    backgroundColor: '#0b63ce',
+    paddingHorizontal: 12
+  },
+  newButtonText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: '800'
+  },
+  statGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12
+  },
+  searchRow: {
+    flexDirection: 'row',
     gap: 8
   },
-  heroEyebrow: {
-    color: '#b7c6eb',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase'
+  searchIconOnly: {
+    width: 56,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    backgroundColor: '#eef2f7'
   },
-  heroTitle: {
-    color: COLORS.surface,
-    fontSize: 32,
-    fontWeight: '800'
-  },
-  heroDescription: {
-    color: '#d4defa',
-    fontSize: 15,
-    lineHeight: 22
-  },
-  summaryCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
+  filterChip: {
+    minHeight: 36,
+    justifyContent: 'center',
+    borderRadius: 999,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 18,
-    gap: 4
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 13
   },
-  summaryLabel: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase'
+  filterChipActive: {
+    borderColor: '#2f77e5',
+    backgroundColor: '#2f77e5'
   },
-  summaryValue: {
-    color: COLORS.heading,
-    fontSize: 30,
+  filterChipText: {
+    color: COLORS.text,
+    fontSize: 14,
     fontWeight: '800'
   },
-  summaryHint: {
-    color: COLORS.textMuted,
-    fontSize: 13
+  filterChipTextActive: {
+    color: COLORS.surface
   },
   taskCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 26,
+    borderRadius: 10,
     padding: 20,
     gap: 12,
     borderWidth: 1,
@@ -206,40 +292,84 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12
   },
-  locationName: {
-    flex: 1,
-    color: COLORS.heading,
-    fontSize: 22,
-    fontWeight: '800'
-  },
-  locationCode: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  requestText: {
-    color: COLORS.text,
-    fontSize: 16,
-    lineHeight: 24
-  },
-  cardFooter: {
+  statusRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-    paddingTop: 8
+    alignItems: 'center',
+    gap: 8
   },
-  footerLabel: {
+  createdText: {
     color: COLORS.textMuted,
     fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase'
+    fontWeight: '600'
   },
-  footerValue: {
+  locationName: {
     color: COLORS.heading,
+    fontSize: 18,
+    fontWeight: '800'
+  },
+  requestText: {
+    color: COLORS.textMuted,
     fontSize: 14,
+    lineHeight: 20
+  },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 5,
+    backgroundColor: '#f0f2f5',
+    paddingHorizontal: 8,
+    paddingVertical: 6
+  },
+  tagText: {
+    color: COLORS.textMuted,
+    fontSize: 12,
     fontWeight: '700'
+  },
+  cardActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#eef0f3',
+    paddingTop: 14
+  },
+  avatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e5e7eb'
+  },
+  avatarText: {
+    color: COLORS.heading,
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  detailButton: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 18
+  },
+  detailButtonText: {
+    color: COLORS.text,
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  pressed: {
+    opacity: 0.75
   }
 });

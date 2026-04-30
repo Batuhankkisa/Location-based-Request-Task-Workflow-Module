@@ -45,22 +45,17 @@ export function LoginScreen() {
   return (
     <ScreenContainer scrollable contentContainerStyle={styles.content}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardArea}>
-        <View style={styles.brand}>
-          <View style={styles.brandIcon}>
-            <Text style={styles.brandIconText}>N</Text>
-          </View>
-          <Text style={styles.brandTitle}>Nexus</Text>
-          <Text style={styles.brandSubtitle}>Enterprise Portal</Text>
-        </View>
-
         <View style={styles.formCard}>
-          <Text style={styles.formTitle}>Hesabiniza Giris Yapin</Text>
+          <Text style={styles.brandTitle}>QRTALEP</Text>
+          <Text style={styles.formTitle}>Admin ve Personel Login</Text>
+          <Text style={styles.formSubtitle}>Guvenli JWT tabanli giris yapin.</Text>
 
           <AppInput
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
             label="E-POSTA ADRESI"
+            leftIcon="mail-outline"
             onChangeText={(value) => {
               clearError();
               setValidationError(null);
@@ -74,6 +69,7 @@ export function LoginScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             label="SIFRE"
+            leftIcon="lock-closed-outline"
             onChangeText={(value) => {
               clearError();
               setValidationError(null);
@@ -94,12 +90,15 @@ export function LoginScreen() {
 
           {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-          <AppButton label={isLoading ? 'Giris yapiliyor...' : 'Giris yap'} loading={isLoading} onPress={handleSubmit} />
-
-          <Text style={styles.apiHint}>API: {API_BASE_URL}</Text>
+          <AppButton
+            label={isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
+            loading={isLoading}
+            onPress={handleSubmit}
+            rightIcon="arrow-forward-outline"
+          />
         </View>
 
-        <Text style={styles.footer}>© 2026 Nexus Enterprise. Tum haklari saklidir.</Text>
+        <Text style={styles.apiHint}>API: {API_BASE_URL}</Text>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -110,48 +109,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   },
   keyboardArea: {
-    gap: LAYOUT.sectionGap
-  },
-  brand: {
-    alignItems: 'center',
-    gap: 7,
-    paddingBottom: 8
-  },
-  brandIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.heading
-  },
-  brandIconText: {
-    color: COLORS.surface,
-    fontSize: 25,
-    fontWeight: '800'
+    gap: 14
   },
   brandTitle: {
     color: COLORS.heading,
-    fontSize: 34,
-    fontWeight: '800'
-  },
-  brandSubtitle: {
-    color: COLORS.textMuted,
-    fontSize: 15,
-    fontWeight: '700'
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center'
   },
   formCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 22,
+    borderRadius: 10,
+    padding: 20,
     gap: 16,
     borderWidth: 1,
     borderColor: COLORS.border
   },
   formTitle: {
-    color: COLORS.heading,
-    fontSize: 25,
+    color: COLORS.text,
+    fontSize: 23,
     fontWeight: '800',
+    textAlign: 'center'
+  },
+  formSubtitle: {
+    color: COLORS.textMuted,
+    fontSize: 13,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: -8,
     marginBottom: 4
   },
   loginActionRow: {
@@ -168,7 +153,7 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: 5,
+    borderRadius: 4,
     borderWidth: 1,
     borderColor: COLORS.border,
     backgroundColor: COLORS.surfaceMuted
@@ -187,12 +172,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     fontSize: 12,
     lineHeight: 17,
-    textAlign: 'center'
-  },
-  footer: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
     textAlign: 'center'
   }
 });

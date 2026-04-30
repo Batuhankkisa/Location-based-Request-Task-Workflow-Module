@@ -46,3 +46,12 @@ export interface QrScanLog {
   errorMessage?: string | null;
   resolvedLocation?: QrLocation | null;
 }
+
+export interface CreateQrPayload {
+  token: string;
+  label: string;
+  locationId: string;
+  isActive?: boolean;
+  imagePath?: string;
+  note?: string;
+}

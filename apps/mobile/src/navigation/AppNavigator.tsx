@@ -60,17 +60,22 @@ export function AppNavigator() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: COLORS.heading,
-        tabBarInactiveTintColor: '#8b98b8',
+        tabBarInactiveTintColor: '#4c5565',
         tabBarStyle: {
           height: 76,
           paddingBottom: 8,
           paddingTop: 8,
           backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border
+          borderTopColor: COLORS.border,
+          borderTopWidth: 1
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: '600'
+          fontWeight: '700'
+        },
+        tabBarItemStyle: {
+          borderRadius: 12,
+          marginHorizontal: 2
         },
         tabBarIcon: ({ color, size }) => (
           <Ionicons name={getTabIconName(route.name)} size={size} color={color} />

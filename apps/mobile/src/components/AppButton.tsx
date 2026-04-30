@@ -1,4 +1,6 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
 import { COLORS, LAYOUT } from '../utils/constants';
 
 type AppButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -10,6 +12,7 @@ interface AppButtonProps {
   disabled?: boolean;
   loading?: boolean;
   style?: ViewStyle;
+  rightIcon?: ComponentProps<typeof Ionicons>['name'];
 }
 
 export function AppButton({
@@ -18,7 +21,8 @@ export function AppButton({
   variant = 'primary',
   disabled = false,
   loading = false,
-  style
+  style,
+  rightIcon
 }: AppButtonProps) {
   const isDisabled = disabled || loading;
 
@@ -38,7 +42,10 @@ export function AppButton({
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? COLORS.surface : COLORS.heading} />
       ) : (
-        <Text style={[styles.label, labelStyles[variant]]}>{label}</Text>
+        <>
+          <Text style={[styles.label, labelStyles[variant]]}>{label}</Text>
+          {rightIcon ? <Ionicons name={rightIcon} size={20} color={labelStyles[variant].color} /> : null}
+        </>
       )}
     </Pressable>
   );
@@ -47,7 +54,9 @@ export function AppButton({
 const styles = StyleSheet.create({
   base: {
     minHeight: 54,
-    borderRadius: LAYOUT.controlRadius,
+    flexDirection: 'row',
+    gap: 8,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20

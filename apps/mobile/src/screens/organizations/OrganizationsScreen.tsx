@@ -1,20 +1,36 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { OrganizationType } from '@lbrtw/shared';
 import { useFocusEffect } from '@react-navigation/native';
 import { organizationsApi } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
+import { AppButton } from '../../components/AppButton';
+import { AppInput } from '../../components/AppInput';
 import { EmptyState } from '../../components/EmptyState';
+import { FormModal, OptionChip } from '../../components/FormModal';
 import { LoadingView } from '../../components/LoadingView';
+import { MobileTopBar } from '../../components/MobileTopBar';
 import { ScreenContainer } from '../../components/ScreenContainer';
+import { StatCard } from '../../components/StatCard';
 import { StatusBadge } from '../../components/StatusBadge';
 import type { AdminOrganization } from '../../types/admin';
 import { COLORS, LAYOUT } from '../../utils/constants';
+import { showUnavailableAction } from '../../utils/alerts';
 
 export function OrganizationsScreen() {
   const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [code, setCode] = useState('');
+  const [type, setType] = useState<OrganizationType>(OrganizationType.HOSPITAL);
+  const [isActive, setIsActive] = useState(true);
+  const [telegramEnabled, setTelegramEnabled] = useState(false);
 
   const loadOrganizations = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (mode === 'refresh') {
@@ -50,24 +66,60 @@ export function OrganizationsScreen() {
     [organizations]
   );
 
+  async function handleCreateOrganization() {
+    setFormError(null);
+
+    if (!name.trim() || !code.trim()) {
+      setFormError('Kurum adi ve kod zorunludur.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await organizationsApi.create({
+        name: name.trim(),
+        code: code.trim(),
+        type,
+        isActive,
+        telegramEnabled
+      });
+      setModalVisible(false);
+      setName('');
+      setCode('');
+      setType(OrganizationType.HOSPITAL);
+      setIsActive(true);
+      setTelegramEnabled(false);
+      await loadOrganizations('refresh');
+    } catch (requestError) {
+      setFormError(getApiErrorMessage(requestError));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <ScreenContainer style={styles.screen}>
+      <MobileTopBar />
       <FlatList
         contentContainerStyle={organizations.length ? styles.content : styles.emptyContent}
         data={organizations}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.headerGroup}>
-            <View style={styles.heroCard}>
-              <Text style={styles.heroEyebrow}>Kurumlar</Text>
-              <Text style={styles.heroTitle}>Multi-organization</Text>
-              <Text style={styles.heroDescription}>Kurum durumu, kullanici sayisi ve lokasyon dagilimini izle.</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.pageTitle}>Kurumlar</Text>
+              <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
+                <Ionicons name="add" size={18} color={COLORS.surface} />
+                <Text style={styles.newButtonText}>Yeni Kurum</Text>
+              </Pressable>
             </View>
             <View style={styles.summaryGrid}>
-              <SummaryTile label="Aktif" value={String(summary.active)} />
-              <SummaryTile label="Kullanici" value={String(summary.users)} />
-              <SummaryTile label="Lokasyon" value={String(summary.locations)} />
+              <StatCard icon="business-outline" label="Toplam Kurum" value={String(organizations.length)} />
+              <StatCard icon="shield-checkmark-outline" label="Aktif" value={`${summary.active} / ${organizations.length}`} />
+              <StatCard icon="people-outline" label="Kullanicilar" value={String(summary.users)} />
+              <StatCard icon="paper-plane-outline" label="Telegram" tone="green" value={`${organizations.filter((item) => item.telegramEnabled).length} aktif`} />
             </View>
+            <Text style={styles.sectionTitle}>Tum Kurumlar</Text>
           </View>
         }
         ListEmptyComponent={
@@ -86,6 +138,43 @@ export function OrganizationsScreen() {
         showsVerticalScrollIndicator={false}
       />
       {loading ? <LoadingView description="Kurumlar aliniyor." title="Yukleniyor" /> : null}
+      <FormModal
+        onClose={() => setModalVisible(false)}
+        subtitle="Kurum olusturulunca root lokasyon webdeki gibi otomatik acilir."
+        title="Yeni Kurum"
+        visible={modalVisible}
+      >
+        <AppInput label="Kurum Adi" onChangeText={setName} placeholder="Ozel Hastane C" value={name} />
+        <AppInput autoCapitalize="characters" label="Kod" onChangeText={setCode} placeholder="HSP-C" value={code} />
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Tip</Text>
+          <View style={styles.optionWrap}>
+            {Object.values(OrganizationType).map((item) => (
+              <OptionChip key={item} label={item} onPress={() => setType(item)} selected={type === item} />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Durum</Text>
+          <View style={styles.optionWrap}>
+            <OptionChip label="Aktif" onPress={() => setIsActive(true)} selected={isActive} />
+            <OptionChip label="Pasif" onPress={() => setIsActive(false)} selected={!isActive} />
+          </View>
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>Telegram</Text>
+          <View style={styles.optionWrap}>
+            <OptionChip label="Kapali" onPress={() => setTelegramEnabled(false)} selected={!telegramEnabled} />
+            <OptionChip label="Acik" onPress={() => setTelegramEnabled(true)} selected={telegramEnabled} />
+          </View>
+        </View>
+
+        {formError ? <Text style={styles.formError}>{formError}</Text> : null}
+        <AppButton label="Kurum Olustur" loading={submitting} onPress={handleCreateOrganization} rightIcon="checkmark-outline" />
+      </FormModal>
     </ScreenContainer>
   );
 }
@@ -94,38 +183,22 @@ function OrganizationCard({ organization }: { organization: AdminOrganization })
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
+        <View style={[styles.orgIcon, organization.isActive ? styles.orgIconActive : styles.orgIconPassive]}>
+          <Ionicons name={organization.isActive ? 'business' : 'construct-outline'} size={23} color={organization.isActive ? COLORS.surface : COLORS.textMuted} />
+        </View>
         <View style={styles.cardTitleGroup}>
           <Text style={styles.cardTitle}>{organization.name}</Text>
           <Text style={styles.cardMeta}>
-            {organization.code} / {organization.type}
+            {organization.type}
           </Text>
         </View>
         <StatusBadge label={organization.isActive ? 'Aktif' : 'Pasif'} tone={organization.isActive ? 'success' : 'danger'} />
       </View>
 
-      <View style={styles.metricsRow}>
-        <Metric label="Kullanici" value={organization._count.users} />
-        <Metric label="Lokasyon" value={organization._count.locations} />
-        <Metric label="Telegram" value={organization.telegramEnabled ? 'Acik' : 'Kapali'} />
+      <View style={styles.cardFooter}>
+        <Text style={styles.footerText}>{organization._count.locations} Lokasyon</Text>
+        <Text style={styles.footerText}>{organization._count.users} Kullanici</Text>
       </View>
-    </View>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string | number }) {
-  return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-    </View>
-  );
-}
-
-function SummaryTile({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.summaryTile}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
     </View>
   );
 }
@@ -136,7 +209,8 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: LAYOUT.screenPadding,
-    paddingVertical: 16,
+    paddingTop: 22,
+    paddingBottom: 16,
     gap: 14
   },
   emptyContent: {
@@ -146,57 +220,48 @@ const styles = StyleSheet.create({
     gap: 14
   },
   headerGroup: {
-    gap: 14,
+    gap: 18,
     marginBottom: 2
   },
-  heroCard: {
-    backgroundColor: COLORS.heading,
-    borderRadius: 24,
-    padding: 22,
-    gap: 8
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
   },
-  heroEyebrow: {
-    color: '#b7c6eb',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  heroTitle: {
-    color: COLORS.surface,
-    fontSize: 29,
+  pageTitle: {
+    color: COLORS.heading,
+    fontSize: 25,
     fontWeight: '800'
   },
-  heroDescription: {
-    color: '#d4defa',
-    fontSize: 15,
-    lineHeight: 22
+  newButton: {
+    flexShrink: 0,
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12
+  },
+  newButtonText: {
+    color: COLORS.surface,
+    fontSize: 14,
+    fontWeight: '800'
   },
   summaryGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10
   },
-  summaryTile: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 14
-  },
-  summaryLabel: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  summaryValue: {
+  sectionTitle: {
     color: COLORS.heading,
-    fontSize: 24,
+    fontSize: 17,
     fontWeight: '800'
   },
   card: {
     backgroundColor: COLORS.surface,
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,
@@ -204,9 +269,21 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 10
+    alignItems: 'center',
+    gap: 12
+  },
+  orgIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  orgIconActive: {
+    backgroundColor: COLORS.primary
+  },
+  orgIconPassive: {
+    backgroundColor: '#e5e7eb'
   },
   cardTitleGroup: {
     flex: 1
@@ -218,30 +295,39 @@ const styles = StyleSheet.create({
   },
   cardMeta: {
     color: COLORS.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     marginTop: 3
   },
-  metricsRow: {
+  cardFooter: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#eef0f3',
+    paddingTop: 12
+  },
+  footerText: {
+    color: COLORS.text,
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  formSection: {
     gap: 10
   },
-  metric: {
-    flex: 1,
-    borderRadius: 14,
-    backgroundColor: COLORS.surfaceMuted,
-    padding: 12
-  },
-  metricLabel: {
+  formLabel: {
     color: COLORS.textMuted,
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     textTransform: 'uppercase'
   },
-  metricValue: {
-    color: COLORS.heading,
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 4
+  optionWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8
+  },
+  formError: {
+    color: COLORS.danger,
+    fontSize: 14,
+    fontWeight: '700'
   }
 });
