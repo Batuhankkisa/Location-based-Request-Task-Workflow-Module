@@ -61,6 +61,7 @@ const form = reactive({
 const formSubmitting = ref(false);
 const formError = ref('');
 const formMessage = ref('');
+const treeSearchTerm = ref('');
 
 const { data: organizationData } = await useAsyncData('location-organizations', async () => {
   if (!canSelectOrganization.value) {
@@ -99,6 +100,8 @@ const { data, pending, error, refresh } = await useAsyncData(
 );
 
 const locations = computed(() => data.value?.data ?? []);
+const filteredLocations = computed(() => filterLocationTree(locations.value, treeSearchTerm.value));
+const hasTreeSearch = computed(() => treeSearchTerm.value.trim().length > 0);
 const parentOptions = computed<LocationOption[]>(() => {
   const items: LocationOption[] = [];
 
@@ -214,6 +217,56 @@ function resetLocationForm() {
   formError.value = '';
   formMessage.value = '';
 }
+
+function normalizeTreeSearch(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function nodeMatchesSearch(node: LocationNode, searchTerm: string) {
+  const searchableText = [
+    node.name,
+    node.code,
+    node.type,
+    node.organization?.name,
+    node.organization?.code,
+    ...node.qrCodes.map((qr) => `${qr.label} ${qr.token}`)
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  return normalizeTreeSearch(searchableText).includes(searchTerm);
+}
+
+function filterLocationTree(nodes: LocationNode[], rawSearchTerm: string): LocationNode[] {
+  const searchTerm = normalizeTreeSearch(rawSearchTerm);
+
+  if (!searchTerm) {
+    return nodes;
+  }
+
+  return nodes.flatMap((node) => {
+    if (nodeMatchesSearch(node, searchTerm)) {
+      return [node];
+    }
+
+    const children = filterLocationTree(node.children, searchTerm);
+    if (!children.length) {
+      return [];
+    }
+
+    return [
+      {
+        ...node,
+        children
+      }
+    ];
+  });
+}
 </script>
 
 <template>
@@ -313,7 +366,13 @@ function resetLocationForm() {
           <h2>Mevcut Lokasyonlar</h2>
           <label class="tree-search">
             <span aria-hidden="true"></span>
-            <input type="text" placeholder="Ağaçta ara..." disabled />
+            <input
+              v-model="treeSearchTerm"
+              type="search"
+              placeholder="Ağaçta ara..."
+              autocomplete="off"
+              :disabled="pending || Boolean(error)"
+            />
           </label>
         </div>
 
@@ -325,7 +384,8 @@ function resetLocationForm() {
           <p>Lokasyon agaci alinamadi.</p>
         </div>
 
-        <LocationTree v-else-if="locations.length" :nodes="locations" />
+        <LocationTree v-else-if="filteredLocations.length" :nodes="filteredLocations" />
+        <p v-else-if="hasTreeSearch" class="tree-state">Aramanla eslesen lokasyon bulunamadi.</p>
         <p v-else class="tree-state">Henuz lokasyon yok.</p>
       </section>
     </div>
