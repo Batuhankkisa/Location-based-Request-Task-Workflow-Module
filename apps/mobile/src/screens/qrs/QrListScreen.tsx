@@ -154,13 +154,13 @@ export function QrListScreen({ navigation }: Props) {
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'QR listesi alinamadi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'QR kaydi yok'}
+              title={error ? 'QR listesi alınamadı' : hasActiveFilter ? 'Sonuç bulunamadı' : 'QR kaydı yok'}
               description={
                 error
                   ? error
                   : hasActiveFilter
-                    ? 'Arama veya filtre secimine uyan QR kaydi bulunamadi.'
-                    : 'Supervisor ve admin kullanicilari icin QR kayitlari bu alanda listelenir.'
+                    ? 'Arama veya filtre seçimine uyan QR kaydı bulunamadı.'
+                    : 'Supervisor ve admin kullanıcıları için QR kayıtları bu alanda listelenir.'
               }
               actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
               onAction={error || !hasActiveFilter ? () => void loadItems('initial') : undefined}
@@ -172,7 +172,7 @@ export function QrListScreen({ navigation }: Props) {
             <View style={styles.titleRow}>
               <View style={styles.titleTextGroup}>
                 <Text style={styles.pageTitle}>QR Envanteri</Text>
-                <Text style={styles.pageSubtitle}>Sistemdeki tum QR kodlarini yonetin.</Text>
+                <Text style={styles.pageSubtitle}>Sistemdeki tüm QR kodlarını yönetin.</Text>
               </View>
               <Pressable onPress={() => setModalVisible(true)} style={styles.newButton}>
                 <Ionicons name="add" size={18} color={COLORS.surface} />
@@ -198,7 +198,7 @@ export function QrListScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.filterRow}>
-              <FilterChip active={statusFilter === 'ALL'} label="Tumu" onPress={() => setStatusFilter('ALL')} />
+              <FilterChip active={statusFilter === 'ALL'} label="Tümü" onPress={() => setStatusFilter('ALL')} />
               <FilterChip active={statusFilter === 'ACTIVE'} label="Aktif" onPress={() => setStatusFilter('ACTIVE')} />
               <FilterChip active={statusFilter === 'PASSIVE'} label="Pasif" onPress={() => setStatusFilter('PASSIVE')} />
             </View>
@@ -234,15 +234,15 @@ export function QrListScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       />
 
-      {loading ? <LoadingView description="QR kayitlari cekiliyor." title="QRlar yukleniyor" /> : null}
+      {loading ? <LoadingView description="QR kayıtları çekiliyor." title="QR Kodları yükleniyor" /> : null}
       <FormModal
         onClose={() => setModalVisible(false)}
-        subtitle="Webdeki QR olusturma mantigi ile ayni endpoint kullanilir."
+        subtitle="Webdeki QR oluşturma mantığı ile aynı endpoint kullanılır."
         title="Yeni QR"
         visible={modalVisible}
       >
         <AppInput label="Token" onChangeText={setToken} placeholder="qr-2026-room-101" value={token} />
-        <AppInput label="Etiket" onChangeText={setLabel} placeholder="Oda 101 Giris QR" value={label} />
+        <AppInput label="Etiket" onChangeText={setLabel} placeholder="Oda 101 Giriş QR" value={label} />
 
         <View style={styles.formSection}>
           <Text style={styles.formLabel}>Lokasyon</Text>
@@ -267,7 +267,7 @@ export function QrListScreen({ navigation }: Props) {
         </View>
 
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-        <AppButton label="QR Olustur" loading={submitting} onPress={handleCreateQr} rightIcon="checkmark-outline" />
+        <AppButton label="QR Oluştur" loading={submitting} onPress={handleCreateQr} rightIcon="checkmark-outline" />
       </FormModal>
     </ScreenContainer>
   );

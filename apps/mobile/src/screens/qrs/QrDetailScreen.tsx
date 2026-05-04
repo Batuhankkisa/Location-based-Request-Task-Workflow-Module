@@ -83,7 +83,7 @@ export function QrDetailScreen({ route, navigation }: Props) {
   if (loading && !qr) {
     return (
       <ScreenContainer centered>
-        <LoadingView description="QR detayi ve scan loglari aliniyor." title="QR aciliyor" />
+        <LoadingView description="QR detayı ve okutma kayıtları alınıyor." title="QR açılıyor" />
       </ScreenContainer>
     );
   }
@@ -92,9 +92,9 @@ export function QrDetailScreen({ route, navigation }: Props) {
     return (
       <ScreenContainer centered>
         <EmptyState
-          title="QR bulunamadi"
-          description={error ?? 'QR detayi okunamadi.'}
-          actionLabel="Listeye don"
+          title="QR bulunamadı"
+          description={error ?? 'QR detayı okunamadı.'}
+          actionLabel="Listeye dön"
           onAction={() => navigation.goBack()}
         />
       </ScreenContainer>
@@ -111,7 +111,7 @@ export function QrDetailScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>Secili QR</Text>
+          <Text style={styles.heroEyebrow}>Seçili QR</Text>
           <Text style={styles.heroTitle}>{qr.label}</Text>
           <Text style={styles.heroSubtitle}>{qr.token}</Text>
         </View>
@@ -119,37 +119,37 @@ export function QrDetailScreen({ route, navigation }: Props) {
         <View style={styles.infoCard}>
           <InfoRow label="Lokasyon" value={qr.location.name} hint={qr.location.code} />
           <InfoRow label="Durum" value={qr.isActive ? 'Aktif' : 'Pasif'} />
-          <InfoRow label="Scan count" value={String(qr.scanCount)} />
-          <InfoRow label="Son kullanim" value={formatDateTime(qr.lastScannedAt)} />
+          <InfoRow label="Okutulma sayısı" value={String(qr.scanCount)} />
+          <InfoRow label="Son kullanım" value={formatDateTime(qr.lastScannedAt)} />
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Preview</Text>
+          <Text style={styles.sectionTitle}>Önizleme</Text>
           <View style={styles.previewCard}>
             {previewUri ? (
               <Image source={{ uri: previewUri }} style={styles.previewImage} />
             ) : (
               <View style={styles.previewPlaceholder}>
-                <Text style={styles.previewPlaceholderText}>Image preview alani</Text>
+                <Text style={styles.previewPlaceholderText}>Görsel önizleme alanı</Text>
               </View>
             )}
           </View>
-          <Text style={styles.previewCaption}>{previewUri ?? 'Image path tanimli degil.'}</Text>
+          <Text style={styles.previewCaption}>{previewUri ?? 'Görsel yolu tanımlı değil.'}</Text>
         </View>
 
         {canToggleQrStatus(role) ? (
           <View style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Admin aksiyonlari</Text>
+            <Text style={styles.sectionTitle}>Admin aksiyonları</Text>
             {qr.isActive ? (
               <AppButton
-                label="Deactivate"
+                label="Pasife al"
                 loading={actionLoading === 'deactivate'}
                 onPress={() => void handleToggle('deactivate')}
                 variant="danger"
               />
             ) : (
               <AppButton
-                label="Activate"
+                label="Aktife al"
                 loading={actionLoading === 'activate'}
                 onPress={() => void handleToggle('activate')}
                 variant="secondary"
@@ -160,7 +160,7 @@ export function QrDetailScreen({ route, navigation }: Props) {
         ) : null}
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Scan log listesi</Text>
+          <Text style={styles.sectionTitle}>Okutma kayıtları</Text>
           <View style={styles.logsList}>
             {logs.length ? (
               logs.map((log) => {
@@ -174,14 +174,14 @@ export function QrDetailScreen({ route, navigation }: Props) {
                     </View>
                     <Text style={styles.logToken}>{log.tokenSnapshot}</Text>
                     <Text style={styles.logMeta}>
-                      {log.resolvedLocation?.name ?? 'Lokasyon eslesmesi yok'}
+                      {log.resolvedLocation?.name ?? 'Lokasyon eşleşmesi yok'}
                     </Text>
                     {log.errorMessage ? <Text style={styles.logError}>{log.errorMessage}</Text> : null}
                   </View>
                 );
               })
             ) : (
-              <Text style={styles.sectionMuted}>Bu QR icin scan log bulunmuyor.</Text>
+              <Text style={styles.sectionMuted}>Bu QR için okutma kaydı bulunmuyor.</Text>
             )}
           </View>
         </View>

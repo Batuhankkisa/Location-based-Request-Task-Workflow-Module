@@ -46,16 +46,16 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 export const TASK_STATUS_META: Record<TaskStatus, { label: string; tone: StatusTone }> = {
   [TaskStatus.NEW]: { label: 'Yeni', tone: 'info' },
-  [TaskStatus.IN_PROGRESS]: { label: 'Islemde', tone: 'warning' },
+  [TaskStatus.IN_PROGRESS]: { label: 'İşlemde', tone: 'warning' },
   [TaskStatus.DONE_WAITING_APPROVAL]: { label: 'Onay Bekliyor', tone: 'neutral' },
-  [TaskStatus.APPROVED]: { label: 'Onaylandi', tone: 'success' },
+  [TaskStatus.APPROVED]: { label: 'Onaylandı', tone: 'success' },
   [TaskStatus.REJECTED]: { label: 'Reddedildi', tone: 'danger' }
 };
 
 export const QR_SCAN_STATUS_META: Record<QrScanStatus, { label: string; tone: StatusTone }> = {
-  [QrScanStatus.RESOLVED]: { label: 'Cozuldu', tone: 'success' },
+  [QrScanStatus.RESOLVED]: { label: 'Çözüldü', tone: 'success' },
   [QrScanStatus.INACTIVE]: { label: 'Pasif', tone: 'warning' },
-  [QrScanStatus.TOKEN_NOT_FOUND]: { label: 'Bulunamadi', tone: 'danger' },
-  [QrScanStatus.REQUEST_CREATED]: { label: 'Talep Olustu', tone: 'info' },
-  [QrScanStatus.REQUEST_FAILED]: { label: 'Talep Hatasi', tone: 'danger' }
+  [QrScanStatus.TOKEN_NOT_FOUND]: { label: 'Bulunamadı', tone: 'danger' },
+  [QrScanStatus.REQUEST_CREATED]: { label: 'Talep Oluştu', tone: 'info' },
+  [QrScanStatus.REQUEST_FAILED]: { label: 'Talep Hatası', tone: 'danger' }
 };

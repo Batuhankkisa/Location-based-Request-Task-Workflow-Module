@@ -30,18 +30,18 @@ export function ProfileScreen() {
 
       <View style={styles.heroCard}>
         <Text style={styles.heroEyebrow}>Profil</Text>
-        <Text style={styles.heroTitle}>{user?.fullName ?? 'Kullanici'}</Text>
+        <Text style={styles.heroTitle}>{user?.fullName ?? 'Kullanıcı'}</Text>
       </View>
 
       <View style={styles.infoCard}>
         <InfoRow label="Ad soyad" value={user?.fullName} />
-        <InfoRow label="Email" value={user?.email} />
+        <InfoRow label="E-posta" value={user?.email} />
         <InfoRow label="Rol" value={getRoleLabel(user?.role)} />
         <InfoRow label="Kurum" value={user?.organization?.name ?? 'Global admin'} />
         <InfoRow label="Durum" value={user?.isActive ? 'Aktif' : 'Pasif'} />
       </View>
 
-      <AppButton label="Logout" onPress={() => void logout()} />
+      <AppButton label="Çıkış yap" onPress={() => void logout()} />
     </ScreenContainer>
   );
 }

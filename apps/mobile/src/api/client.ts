@@ -58,7 +58,7 @@ export function getApiErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return 'Beklenmeyen bir hata olustu.';
+  return 'Beklenmeyen bir hata oluştu.';
 }
 
 function getAxiosErrorMessage(error: AxiosError<{ message?: string | string[]; error?: string }>) {
@@ -72,12 +72,12 @@ function getAxiosErrorMessage(error: AxiosError<{ message?: string | string[]; e
   }
 
   if (error.code === 'ECONNABORTED') {
-    return 'Sunucu zaman asimina ugradi.';
+    return 'Sunucu zaman aşımına uğradı.';
   }
 
   if (!error.response) {
-    return 'API baglantisi kurulamadı. Base URL ayarini kontrol edin.';
+    return 'API bağlantısı kurulamadı. Base URL ayarını kontrol edin.';
   }
 
-  return 'Istek sirasinda bir hata olustu.';
+  return 'İstek sırasında bir hata oluştu.';
 }

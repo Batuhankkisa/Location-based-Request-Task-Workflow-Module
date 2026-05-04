@@ -22,7 +22,7 @@ const adminNavItems = computed(() =>
       ? {
           to: '/admin/tasks',
           label: 'Açık Talepler',
-          meta: 'Requests',
+          meta: 'Talepler',
           keywords: ['gorev', 'talep', 'task', 'request', 'operasyon', 'bildirim']
         }
       : null,
@@ -30,7 +30,7 @@ const adminNavItems = computed(() =>
       ? {
           to: '/admin/qrs',
           label: 'QR Envanteri',
-          meta: 'QR Inventory',
+          meta: 'QR Envanteri',
           keywords: ['qr', 'envanter', 'kod', 'token', 'oda', 'link']
         }
       : null,
@@ -38,7 +38,7 @@ const adminNavItems = computed(() =>
       ? {
           to: '/admin/locations',
           label: 'Lokasyon Ağacı',
-          meta: 'Location Trees',
+          meta: 'Lokasyon Ağacı',
           keywords: ['lokasyon', 'agac', 'tesis', 'kat', 'oda', 'alan', 'konum']
         }
       : null,
@@ -46,7 +46,7 @@ const adminNavItems = computed(() =>
       ? {
           to: '/admin/organizations',
           label: 'Kurumlar',
-          meta: 'Organizations',
+          meta: 'Kurumlar',
           keywords: ['kurum', 'organizasyon', 'organization', 'firma', 'musteri']
         }
       : null,
@@ -54,7 +54,7 @@ const adminNavItems = computed(() =>
       ? {
           to: '/admin/users',
           label: 'Kullanıcılar',
-          meta: 'Users',
+          meta: 'Kullanıcılar',
           keywords: ['kullanici', 'user', 'rol', 'yetki', 'admin', 'supervisor']
         }
       : null
@@ -196,7 +196,7 @@ function focusAdminSearch() {
             <img class="admin-brand-logo" src="/qr-logo.svg" alt="" aria-hidden="true" />
             <span>
               <strong>QR Talep</strong>
-              <small>WORKFLOW</small>
+              <small>İŞ AKIŞI</small>
             </span>
           </NuxtLink>
         </div>

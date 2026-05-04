@@ -32,7 +32,7 @@ export function RootNavigator() {
   if (status === 'idle' || status === 'loading') {
     return (
       <ScreenContainer centered>
-        <LoadingView title="Oturum kontrol ediliyor" description="Kayitli token ile giris deneniyor." />
+        <LoadingView title="Oturum kontrol ediliyor" description="Kayıtlı token ile giriş deneniyor." />
       </ScreenContainer>
     );
   }
@@ -46,12 +46,12 @@ export function RootNavigator() {
           <ScreenContainer centered>
             <View style={styles.accessCard}>
               <Text style={styles.accessEyebrow}>Yetki gerekli</Text>
-              <Text style={styles.accessTitle}>Mobil uygulama supervisor ve adminler icindir.</Text>
+              <Text style={styles.accessTitle}>Mobil uygulama supervisor ve adminler içindir.</Text>
               <Text style={styles.accessDescription}>
-                Bu hesap rolu: {getRoleLabel(user?.role)}. Gorev ve QR operasyonlari icin supervisor veya admin
-                hesabi ile giris yapin.
+                Bu hesap rolü: {getRoleLabel(user?.role)}. Görev ve QR operasyonları için supervisor veya admin
+                hesabı ile giriş yapın.
               </Text>
-              <AppButton label="Cikis yap" onPress={() => void logout()} />
+              <AppButton label="Çıkış yap" onPress={() => void logout()} />
             </View>
           </ScreenContainer>
         )

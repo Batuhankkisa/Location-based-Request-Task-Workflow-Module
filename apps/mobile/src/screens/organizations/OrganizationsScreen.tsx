@@ -76,7 +76,7 @@ export function OrganizationsScreen() {
           organization.code,
           organization.type,
           organization.isActive ? 'aktif' : 'pasif',
-          organization.telegramEnabled ? 'telegram aktif' : 'telegram kapali',
+          organization.telegramEnabled ? 'telegram aktif' : 'telegram kapalı',
           organization._count.users,
           organization._count.locations
         ])
@@ -111,7 +111,7 @@ export function OrganizationsScreen() {
     setFormError(null);
 
     if (!name.trim() || !code.trim()) {
-      setFormError('Kurum adi ve kod zorunludur.');
+      setFormError('Kurum adı ve kod zorunludur.');
       return;
     }
 
@@ -165,20 +165,20 @@ export function OrganizationsScreen() {
             <View style={styles.summaryGrid}>
               <StatCard icon="business-outline" label="Toplam Kurum" tone="violet" value={String(organizations.length)} />
               <StatCard icon="shield-checkmark-outline" label="Aktif" tone="green" value={`${summary.active} / ${organizations.length}`} />
-              <StatCard icon="people-outline" label="Kullanicilar" tone="blue" value={String(summary.users)} />
+              <StatCard icon="people-outline" label="Kullanıcılar" tone="blue" value={String(summary.users)} />
               <StatCard icon="paper-plane-outline" label="Telegram" tone="amber" value={`${organizations.filter((item) => item.telegramEnabled).length} aktif`} />
             </View>
             <SearchBar onChangeText={setSearchTerm} placeholder="Kurum veya kod ara..." value={searchTerm} />
-            <Text style={styles.sectionTitle}>Tum Kurumlar</Text>
+            <Text style={styles.sectionTitle}>Tüm Kurumlar</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'Kurumlar yuklenemedi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'Kurum yok'}
+              title={error ? 'Kurumlar yüklenemedi' : hasActiveFilter ? 'Sonuç bulunamadı' : 'Kurum yok'}
               description={
                 error ??
-                (hasActiveFilter ? 'Aramanla eslesen kurum kaydi bulunamadi.' : 'Sistemde kurum kaydi bulunmuyor.')
+                (hasActiveFilter ? 'Aramanla eşleşen kurum kaydı bulunamadı.' : 'Sistemde kurum kaydı bulunmuyor.')
               }
               actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
               onAction={error || !hasActiveFilter ? () => void loadOrganizations('initial') : undefined}
@@ -190,18 +190,18 @@ export function OrganizationsScreen() {
         renderItem={({ item }) => <OrganizationCard onEdit={openEditModal} organization={item} />}
         showsVerticalScrollIndicator={false}
       />
-      {loading ? <LoadingView description="Kurumlar aliniyor." title="Yukleniyor" /> : null}
+      {loading ? <LoadingView description="Kurumlar alınıyor." title="Yükleniyor" /> : null}
       <FormModal
         onClose={() => setModalVisible(false)}
         subtitle={
           editingOrganization
-            ? 'Kurum bilgileri, durum ve bildirim tercihi guncellenir.'
-            : 'Kurum olusturulunca root lokasyon webdeki gibi otomatik acilir.'
+            ? 'Kurum bilgileri, durum ve bildirim tercihi güncellenir.'
+            : 'Kurum oluşturulunca root lokasyon webdeki gibi otomatik açılır.'
         }
-        title={editingOrganization ? 'Kurum Duzenle' : 'Yeni Kurum'}
+        title={editingOrganization ? 'Kurum Düzenle' : 'Yeni Kurum'}
         visible={modalVisible}
       >
-        <AppInput label="Kurum Adi" onChangeText={setName} placeholder="Ozel Hastane C" value={name} />
+        <AppInput label="Kurum Adı" onChangeText={setName} placeholder="Özel Hastane C" value={name} />
         <AppInput autoCapitalize="characters" label="Kod" onChangeText={setCode} placeholder="HSP-C" value={code} />
 
         <View style={styles.formSection}>
@@ -225,13 +225,13 @@ export function OrganizationsScreen() {
           <Text style={styles.formLabel}>Telegram</Text>
           <View style={styles.optionWrap}>
             <OptionChip label="Kapali" onPress={() => setTelegramEnabled(false)} selected={!telegramEnabled} />
-            <OptionChip label="Acik" onPress={() => setTelegramEnabled(true)} selected={telegramEnabled} />
+            <OptionChip label="Açık" onPress={() => setTelegramEnabled(true)} selected={telegramEnabled} />
           </View>
         </View>
 
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
         <AppButton
-          label={editingOrganization ? 'Kurum Guncelle' : 'Kurum Olustur'}
+          label={editingOrganization ? 'Kurum Güncelle' : 'Kurum Oluştur'}
           loading={submitting}
           onPress={handleSaveOrganization}
           rightIcon="checkmark-outline"
@@ -265,9 +265,9 @@ function OrganizationCard({
 
       <View style={styles.cardFooter}>
         <Text style={styles.footerText}>{organization._count.locations} Lokasyon</Text>
-        <Text style={styles.footerText}>{organization._count.users} Kullanici</Text>
+        <Text style={styles.footerText}>{organization._count.users} Kullanıcı</Text>
         <Pressable onPress={() => onEdit(organization)} style={({ pressed }) => [styles.editPill, pressed ? styles.pressed : null]}>
-          <Text style={styles.editPillText}>Duzenle</Text>
+          <Text style={styles.editPillText}>Düzenle</Text>
         </Pressable>
       </View>
     </View>

@@ -111,7 +111,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
   if (loading && !task) {
     return (
       <ScreenContainer centered>
-        <LoadingView description="Task detay bilgisi aliniyor." title="Gorev aciliyor" />
+        <LoadingView description="Görev detay bilgisi alınıyor." title="Görev açılıyor" />
       </ScreenContainer>
     );
   }
@@ -120,9 +120,9 @@ export function TaskDetailScreen({ route, navigation }: Props) {
     return (
       <ScreenContainer centered>
         <EmptyState
-          title="Gorev bulunamadi"
-          description={error ?? 'Task detayi okunamadi.'}
-          actionLabel="Listeye don"
+          title="Görev bulunamadı"
+          description={error ?? 'Görev detayı okunamadı.'}
+          actionLabel="Listeye dön"
           onAction={() => navigation.goBack()}
         />
       </ScreenContainer>
@@ -137,9 +137,9 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.heroCard}>
-          <Text style={styles.heroEyebrow}>Acik gorev</Text>
+          <Text style={styles.heroEyebrow}>Açık görev</Text>
           <View style={styles.heroRow}>
-            <Text style={styles.heroTitle}>Gorevi guncelle</Text>
+            <Text style={styles.heroTitle}>Görevi güncelle</Text>
             {statusMeta ? <StatusBadge label={statusMeta.label} tone={statusMeta.tone} /> : null}
           </View>
           <Text style={styles.heroSubtitle}>{task.request.requestText}</Text>
@@ -148,8 +148,8 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         <View style={styles.infoCard}>
           <InfoRow label="Lokasyon" value={task.location.name} hint={task.location.code} />
           <InfoRow label="QR" value={task.request.qrCode?.label ?? '-'} hint={task.request.qrCode?.token ?? '-'} />
-          <InfoRow label="Olusma" value={formatDateTime(task.createdAt)} />
-          <InfoRow label="Atanan" value={task.assignedTo ?? 'Henuz atanmadi'} />
+          <InfoRow label="Oluşma" value={formatDateTime(task.createdAt)} />
+          <InfoRow label="Atanan" value={task.assignedTo ?? 'Henüz atanmadı'} />
         </View>
 
         <View style={styles.sectionCard}>
@@ -164,19 +164,19 @@ export function TaskDetailScreen({ route, navigation }: Props) {
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Ses alani</Text>
+          <Text style={styles.sectionTitle}>Ses alanı</Text>
           {audioUrl ? (
             <>
-              <Text style={styles.sectionText}>Ses kaydi geldi. Oynatici yerine bu asamada baglanti alani hazirlandi.</Text>
-              <AppButton label="Ses baglantisini ac" onPress={() => void Linking.openURL(audioUrl)} variant="secondary" />
+              <Text style={styles.sectionText}>Ses kaydı geldi. Oynatıcı yerine bu aşamada bağlantı alanı hazırlandı.</Text>
+              <AppButton label="Ses bağlantısını aç" onPress={() => void Linking.openURL(audioUrl)} variant="secondary" />
             </>
           ) : (
-            <Text style={styles.sectionMuted}>Bu talep icin ses kaydi bulunmuyor.</Text>
+            <Text style={styles.sectionMuted}>Bu talep için ses kaydı bulunmuyor.</Text>
           )}
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Gorseller</Text>
+          <Text style={styles.sectionTitle}>Görseller</Text>
           {images.length ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.imageRow}>
@@ -186,16 +186,16 @@ export function TaskDetailScreen({ route, navigation }: Props) {
               </View>
             </ScrollView>
           ) : (
-            <Text style={styles.sectionMuted}>Bu talep icin gorsel eklenmemis.</Text>
+            <Text style={styles.sectionMuted}>Bu talep için görsel eklenmemiş.</Text>
           )}
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Aksiyon secin</Text>
+          <Text style={styles.sectionTitle}>Aksiyon seçin</Text>
           <View style={styles.actionsGrid}>
             {task.status === TaskStatus.NEW ? (
               <AppButton
-                label="Start"
+                label="Başlat"
                 loading={actionLoading === 'start'}
                 onPress={() => void handleAction('start')}
                 style={styles.actionButton}
@@ -204,7 +204,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
             ) : null}
             {task.status === TaskStatus.IN_PROGRESS ? (
               <AppButton
-                label="Complete"
+                label="Tamamla"
                 loading={actionLoading === 'complete'}
                 onPress={() => void handleAction('complete')}
                 style={styles.actionButton}
@@ -214,14 +214,14 @@ export function TaskDetailScreen({ route, navigation }: Props) {
             {task.status === TaskStatus.DONE_WAITING_APPROVAL && canReviewTask(role) ? (
               <>
                 <AppButton
-                  label="Approve"
+                  label="Onayla"
                   loading={actionLoading === 'approve'}
                   onPress={() => void handleAction('approve')}
                   style={styles.actionButton}
                   variant="secondary"
                 />
                 <AppButton
-                  label="Reject"
+                  label="Reddet"
                   loading={actionLoading === 'reject'}
                   onPress={() => void handleAction('reject')}
                   style={styles.actionButton}
@@ -235,14 +235,14 @@ export function TaskDetailScreen({ route, navigation }: Props) {
             label="Aksiyon notu"
             multiline
             onChangeText={setNote}
-            placeholder="Aciklama veya ekip notu ekleyin"
+            placeholder="Açıklama veya ekip notu ekleyin"
             value={note}
           />
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>History</Text>
+          <Text style={styles.sectionTitle}>Geçmiş</Text>
           <View style={styles.historyList}>
             {task.history.length ? (
               task.history.map((entry) => {
@@ -259,7 +259,7 @@ export function TaskDetailScreen({ route, navigation }: Props) {
                 );
               })
             ) : (
-              <Text style={styles.sectionMuted}>Henuz history kaydi yok.</Text>
+              <Text style={styles.sectionMuted}>Henüz geçmiş kaydı yok.</Text>
             )}
           </View>
         </View>
@@ -278,7 +278,7 @@ function MediaCard({ image }: { image: RequestMediaItem }) {
         {image.originalName ?? image.storageKey}
       </Text>
       {imageUrl ? (
-        <AppButton label="Ac" onPress={() => void Linking.openURL(imageUrl)} style={styles.mediaButton} variant="ghost" />
+        <AppButton label="Aç" onPress={() => void Linking.openURL(imageUrl)} style={styles.mediaButton} variant="ghost" />
       ) : null}
     </View>
   );

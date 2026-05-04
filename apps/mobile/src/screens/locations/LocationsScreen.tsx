@@ -67,7 +67,7 @@ export function LocationsScreen() {
     setFormError(null);
 
     if (!name.trim() || !code.trim() || !parentId) {
-      setFormError('Ad, kod ve parent lokasyon zorunludur.');
+      setFormError('Ad, kod ve üst lokasyon zorunludur.');
       return;
     }
 
@@ -116,11 +116,11 @@ export function LocationsScreen() {
           <SummaryTile label="QR" value={String(totals.qrs)} />
         </View>
 
-        {loading ? <LoadingView description="Lokasyon agaci aliniyor." title="Yukleniyor" /> : null}
+        {loading ? <LoadingView description="Lokasyon ağacı alınıyor." title="Yükleniyor" /> : null}
 
         {!loading && error ? (
           <EmptyState
-            title="Lokasyonlar yuklenemedi"
+            title="Lokasyonlar yüklenemedi"
             description={error}
             actionLabel="Yeniden dene"
             onAction={() => void loadLocations('initial')}
@@ -128,11 +128,11 @@ export function LocationsScreen() {
         ) : null}
 
         {!loading && !error && !locations.length ? (
-          <EmptyState title="Lokasyon yok" description="Bu scope icin lokasyon kaydi bulunmuyor." />
+          <EmptyState title="Lokasyon yok" description="Bu kapsam için lokasyon kaydı bulunmuyor." />
         ) : null}
 
         {!loading && !error && locations.length > 0 && !filteredLocations.length ? (
-          <EmptyState title="Sonuc bulunamadi" description="Aramanla eslesen lokasyon, kurum veya QR kaydi yok." />
+          <EmptyState title="Sonuç bulunamadı" description="Aramanla eşleşen lokasyon, kurum veya QR kaydı yok." />
         ) : null}
 
         <View style={styles.treeList}>
@@ -143,11 +143,11 @@ export function LocationsScreen() {
       </ScrollView>
       <FormModal
         onClose={() => setModalVisible(false)}
-        subtitle="Webdeki lokasyon olusturma endpointi kullanilir."
+        subtitle="Webdeki lokasyon oluşturma endpointi kullanılır."
         title="Yeni Lokasyon"
         visible={modalVisible}
       >
-        <AppInput label="Ad" onChangeText={setName} placeholder="Toplanti Odasi A" value={name} />
+        <AppInput label="Ad" onChangeText={setName} placeholder="Toplantı Odası A" value={name} />
         <AppInput autoCapitalize="characters" label="Kod" onChangeText={setCode} placeholder="ROOM-A" value={code} />
 
         <View style={styles.formSection}>
@@ -160,7 +160,7 @@ export function LocationsScreen() {
         </View>
 
         <View style={styles.formSection}>
-          <Text style={styles.formLabel}>Parent Lokasyon</Text>
+          <Text style={styles.formLabel}>Üst Lokasyon</Text>
           <View style={styles.optionWrap}>
             {parentOptions.slice(0, 12).map((location) => (
               <OptionChip
@@ -174,7 +174,7 @@ export function LocationsScreen() {
         </View>
 
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
-        <AppButton label="Lokasyon Olustur" loading={submitting} onPress={handleCreateLocation} rightIcon="checkmark-outline" />
+        <AppButton label="Lokasyon Oluştur" loading={submitting} onPress={handleCreateLocation} rightIcon="checkmark-outline" />
       </FormModal>
     </ScreenContainer>
   );

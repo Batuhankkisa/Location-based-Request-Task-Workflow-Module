@@ -35,7 +35,7 @@ export function LoginScreen() {
     setHelpMessage(null);
 
     if (!email.trim() || !password.trim()) {
-      setValidationError('Email ve sifre zorunludur.');
+      setValidationError('E-posta ve şifre zorunludur.');
       return;
     }
 
@@ -53,14 +53,14 @@ export function LoginScreen() {
           <View style={styles.brandMark}>
             <QrLogo accessibilityLabel="QR Talep logo" size={72} />
           </View>
-          <Text style={styles.formTitle}>Admin ve Personel Login</Text>
-          <Text style={styles.formSubtitle}>Guvenli JWT tabanli giris yapin.</Text>
+          <Text style={styles.formTitle}>Admin ve Personel Girişi</Text>
+          <Text style={styles.formSubtitle}>Güvenli JWT tabanlı giriş yapın.</Text>
 
           <AppInput
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
-            label="E-POSTA ADRESI"
+            label="E-POSTA ADRESİ"
             leftIcon="mail-outline"
             onChangeText={(value) => {
               clearError();
@@ -74,7 +74,7 @@ export function LoginScreen() {
           <AppInput
             autoCapitalize="none"
             autoCorrect={false}
-            label="SIFRE"
+            label="ŞİFRE"
             leftIcon="lock-closed-outline"
             onChangeText={(value) => {
               clearError();
@@ -89,16 +89,16 @@ export function LoginScreen() {
           <View style={styles.loginActionRow}>
             <Pressable onPress={() => setRememberMe((value) => !value)} style={styles.rememberMe}>
               <View style={[styles.checkbox, rememberMe ? styles.checkboxActive : null]} />
-              <Text style={styles.actionText}>Beni Hatirla</Text>
+              <Text style={styles.actionText}>Beni Hatırla</Text>
             </Pressable>
             <Pressable
               onPress={() => {
                 clearError();
                 setValidationError(null);
-                setHelpMessage('Sifre yenileme icin sistem yoneticisinden kullanici kartindan yeni sifre belirlemesini iste.');
+                setHelpMessage('Şifre yenileme için sistem yöneticisinden kullanıcı kartından yeni şifre belirlemesini iste.');
               }}
             >
-              <Text style={styles.actionText}>Sifremi Unuttum?</Text>
+              <Text style={styles.actionText}>Şifremi Unuttum?</Text>
             </Pressable>
           </View>
 
@@ -106,7 +106,7 @@ export function LoginScreen() {
           {helpMessage ? <Text style={styles.helpText}>{helpMessage}</Text> : null}
 
           <AppButton
-            label={isLoading ? 'Giris yapiliyor...' : 'Giris Yap'}
+            label={isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
             loading={isLoading}
             onPress={handleSubmit}
             rightIcon="arrow-forward-outline"

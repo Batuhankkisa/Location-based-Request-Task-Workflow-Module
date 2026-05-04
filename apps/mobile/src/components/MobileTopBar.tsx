@@ -32,7 +32,7 @@ export function MobileTopBar({ trailingInitial }: MobileTopBarProps) {
   return (
     <View style={styles.container}>
       <Pressable
-        accessibilityLabel="Menu"
+        accessibilityLabel="Menü"
         accessibilityRole="button"
         onPress={() => setMenuVisible(true)}
         style={({ pressed }) => [styles.iconButton, pressed ? styles.pressed : null]}
@@ -63,11 +63,11 @@ export function MobileTopBar({ trailingInitial }: MobileTopBarProps) {
           <Pressable style={styles.menuSheet}>
             <View style={styles.menuHeader}>
               <View>
-                <Text style={styles.menuEyebrow}>Menu</Text>
+                <Text style={styles.menuEyebrow}>Menü</Text>
                 <Text style={styles.menuTitle}>{user?.fullName ?? 'QRTALEP'}</Text>
               </View>
               <Pressable
-                accessibilityLabel="Menuyu kapat"
+                accessibilityLabel="Menüyü kapat"
                 accessibilityRole="button"
                 onPress={() => setMenuVisible(false)}
                 style={({ pressed }) => [styles.closeButton, pressed ? styles.pressed : null]}
@@ -107,7 +107,7 @@ function getMenuItems(role: Role) {
     {
       routeName: 'TasksTab',
       title: 'Talepler',
-      meta: 'Aktif gorev akisi',
+      meta: 'Aktif görev akışı',
       iconName: 'list-circle-outline'
     },
     canSeeQrModule(role)
@@ -122,7 +122,7 @@ function getMenuItems(role: Role) {
       ? {
           routeName: 'LocationsTab',
           title: 'Lokasyonlar',
-          meta: 'Tesis agaci',
+          meta: 'Tesis ağacı',
           iconName: 'git-network-outline'
         }
       : null,
@@ -130,14 +130,14 @@ function getMenuItems(role: Role) {
       ? {
           routeName: 'OrganizationsTab',
           title: 'Kurumlar',
-          meta: 'Organizasyon ayarlari',
+          meta: 'Organizasyon ayarları',
           iconName: 'business-outline'
         }
       : null,
     canManageUsers(role)
       ? {
           routeName: 'UsersTab',
-          title: 'Kullanicilar',
+          title: 'Kullanıcılar',
           meta: 'Roller ve hesaplar',
           iconName: 'people-outline'
         }

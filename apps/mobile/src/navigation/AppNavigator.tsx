@@ -111,7 +111,7 @@ function AppTabsNavigator() {
           name="QrsTab"
           component={QrsStackNavigator}
           options={{
-            title: 'QRlar'
+            title: 'QR Kodları'
           }}
         />
       ) : null}

@@ -94,13 +94,13 @@ export function TaskListScreen({ navigation }: Props) {
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'Gorevler yuklenemedi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'Acik gorev yok'}
+              title={error ? 'Görevler yüklenemedi' : hasActiveFilter ? 'Sonuç bulunamadı' : 'Açık görev yok'}
               description={
                 error
                   ? error
                   : hasActiveFilter
-                    ? 'Arama veya filtre secimine uyan gorev bulunamadi.'
-                    : 'Bu rolde goruntulenebilir aktif bir gorev bulundugunda burada kart olarak listelenir.'
+                    ? 'Arama veya filtre seçimine uyan görev bulunamadı.'
+                    : 'Bu rolde görüntülenebilir aktif bir görev bulunduğunda burada kart olarak listelenir.'
               }
               actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
               onAction={error || !hasActiveFilter ? () => void loadTasks('initial') : undefined}
@@ -111,8 +111,8 @@ export function TaskListScreen({ navigation }: Props) {
           <View style={styles.headerGroup}>
             <View style={styles.titleRow}>
               <View style={styles.titleTextGroup}>
-                <Text style={styles.pageTitle}>Gorevler</Text>
-                <Text style={styles.pageSubtitle}>QR taleplerinden olusan aktif gorevleri goruntuleyin ve yonetin.</Text>
+                <Text style={styles.pageTitle}>Görevler</Text>
+                <Text style={styles.pageSubtitle}>QR taleplerinden oluşan aktif görevleri görüntüleyin ve yönetin.</Text>
               </View>
             </View>
 
@@ -132,7 +132,7 @@ export function TaskListScreen({ navigation }: Props) {
                     value={searchTerm}
                   />
                 </View>
-                <FilterChip active={statusFilter === 'ALL'} label="Tumu" onPress={() => setStatusFilter('ALL')} />
+                <FilterChip active={statusFilter === 'ALL'} label="Tümü" onPress={() => setStatusFilter('ALL')} />
                 <FilterChip
                   active={statusFilter === TaskStatus.NEW}
                   label={TASK_STATUS_META[TaskStatus.NEW].label}
@@ -201,7 +201,7 @@ export function TaskListScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       />
 
-      {loading ? <LoadingView description="Task listesi cekiliyor." title="Gorevler yukleniyor" /> : null}
+      {loading ? <LoadingView description="Görev listesi çekiliyor." title="Görevler yükleniyor" /> : null}
     </ScreenContainer>
   );
 }

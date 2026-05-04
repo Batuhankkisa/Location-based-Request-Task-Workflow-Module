@@ -7,8 +7,8 @@ interface LoadingViewProps {
 }
 
 export function LoadingView({
-  title = 'Yukleniyor',
-  description = 'Icerik hazirlaniyor.'
+  title = 'Yükleniyor',
+  description = 'İçerik hazırlanıyor.'
 }: LoadingViewProps) {
   return (
     <View style={styles.container}>

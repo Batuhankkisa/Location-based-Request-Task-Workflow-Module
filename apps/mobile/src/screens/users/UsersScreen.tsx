@@ -142,12 +142,12 @@ export function UsersScreen() {
     setFormError(null);
 
     if (!fullName.trim() || !email.trim() || (!editingUser && !password.trim())) {
-      setFormError(editingUser ? 'Ad soyad ve email zorunludur.' : 'Ad soyad, email ve sifre zorunludur.');
+      setFormError(editingUser ? 'Ad soyad ve e-posta zorunludur.' : 'Ad soyad, e-posta ve şifre zorunludur.');
       return;
     }
 
     if (role !== Role.ADMIN && !organizationId) {
-      setFormError('Supervisor ve staff kullanicilari icin kurum zorunludur.');
+      setFormError('Supervisor ve staff kullanıcıları için kurum zorunludur.');
       return;
     }
 
@@ -202,11 +202,11 @@ export function UsersScreen() {
             <View style={styles.titleRow}>
               <View style={styles.titleTextGroup}>
                 <Text style={styles.pageTitle}>Supervisor ve Staff Hesaplari</Text>
-                <Text style={styles.pageSubtitle}>Sistemdeki tum operasyonel kullanicilari yonetin.</Text>
+                <Text style={styles.pageSubtitle}>Sistemdeki tüm operasyonel kullanıcıları yönetin.</Text>
               </View>
               <Pressable onPress={openCreateModal} style={styles.newButton}>
                 <Ionicons name="add" size={18} color={COLORS.surface} />
-                <Text style={styles.newButtonText}>Yeni Kullanici Ekle</Text>
+                <Text style={styles.newButtonText}>Yeni Kullanıcı Ekle</Text>
               </Pressable>
             </View>
 
@@ -221,7 +221,7 @@ export function UsersScreen() {
               <View style={styles.searchWrap}>
                 <SearchBar
                   onChangeText={setSearchTerm}
-                  placeholder="Isim, email veya kurum ara..."
+                  placeholder="İsim, e-posta veya kurum ara..."
                   value={searchTerm}
                 />
               </View>
@@ -239,12 +239,12 @@ export function UsersScreen() {
         ListEmptyComponent={
           loading ? null : (
             <EmptyState
-              title={error ? 'Kullanicilar yuklenemedi' : hasActiveFilter ? 'Sonuc bulunamadi' : 'Kullanici yok'}
+              title={error ? 'Kullanıcılar yüklenemedi' : hasActiveFilter ? 'Sonuç bulunamadı' : 'Kullanıcı yok'}
               description={
                 error ??
                 (hasActiveFilter
-                  ? 'Arama veya filtre secimine uyan kullanici bulunamadi.'
-                  : 'Sistemde kullanici kaydi bulunmuyor.')
+                  ? 'Arama veya filtre seçimine uyan kullanıcı bulunamadı.'
+                  : 'Sistemde kullanıcı kaydı bulunmuyor.')
               }
               actionLabel={error || !hasActiveFilter ? 'Yeniden dene' : undefined}
               onAction={error || !hasActiveFilter ? () => void loadUsers('initial') : undefined}
@@ -257,30 +257,30 @@ export function UsersScreen() {
         renderItem={({ item }) => <UserCard onEdit={openEditModal} user={item} />}
         showsVerticalScrollIndicator={false}
       />
-      {loading ? <LoadingView description="Kullanicilar aliniyor." title="Yukleniyor" /> : null}
+      {loading ? <LoadingView description="Kullanıcılar alınıyor." title="Yükleniyor" /> : null}
       <FormModal
         onClose={() => setModalVisible(false)}
         subtitle={
           editingUser
-            ? 'Kullanici bilgileri, rol, kurum ve durum guncellenir.'
-            : 'Webdeki kullanici olusturma mantigi ile ayni endpoint kullanilir.'
+            ? 'Kullanıcı bilgileri, rol, kurum ve durum güncellenir.'
+            : 'Webdeki kullanıcı oluşturma mantığı ile aynı endpoint kullanılır.'
         }
-        title={editingUser ? 'Kullanici Duzenle' : 'Yeni Kullanici'}
+        title={editingUser ? 'Kullanıcı Düzenle' : 'Yeni Kullanıcı'}
         visible={modalVisible}
       >
         <AppInput label="Ad Soyad" onChangeText={setFullName} placeholder="Mehmet Can" value={fullName} />
         <AppInput
           autoCapitalize="none"
           keyboardType="email-address"
-          label="Email"
+          label="E-posta"
           onChangeText={setEmail}
           placeholder="m.can@example.com"
           value={email}
         />
         <AppInput
-          label="Sifre"
+          label="Şifre"
           onChangeText={setPassword}
-          placeholder={editingUser ? 'Degistirmeyeceksen bos birak' : 'Admin123!'}
+          placeholder={editingUser ? 'Değiştirmeyeceksen boş bırak' : 'Admin123!'}
           secureTextEntry
           value={password}
         />
@@ -320,7 +320,7 @@ export function UsersScreen() {
 
         {formError ? <Text style={styles.formError}>{formError}</Text> : null}
         <AppButton
-          label={editingUser ? 'Kullanici Guncelle' : 'Kullanici Olustur'}
+          label={editingUser ? 'Kullanıcı Güncelle' : 'Kullanıcı Oluştur'}
           loading={submitting}
           onPress={handleSaveUser}
           rightIcon="checkmark-outline"
@@ -336,7 +336,7 @@ function getNextValue<T>(current: T, sequence: T[]) {
 }
 
 function getRoleFilterLabel(roleFilter: RoleFilter) {
-  return roleFilter === 'ALL' ? 'Tum Roller' : getRoleLabel(roleFilter);
+  return roleFilter === 'ALL' ? 'Tüm Roller' : getRoleLabel(roleFilter);
 }
 
 function getStatusFilterLabel(statusFilter: UserStatusFilter) {
@@ -348,7 +348,7 @@ function getStatusFilterLabel(statusFilter: UserStatusFilter) {
     return 'Pasif';
   }
 
-  return 'Tum Durumlar';
+  return 'Tüm Durumlar';
 }
 
 function UserCard({ onEdit, user }: { onEdit: (user: AdminUser) => void; user: AdminUser }) {
@@ -386,10 +386,10 @@ function UserCard({ onEdit, user }: { onEdit: (user: AdminUser) => void; user: A
       </View>
       <View style={styles.orgBox}>
         <Text style={styles.infoLabel}>Kurum</Text>
-        <Text numberOfLines={1} style={styles.orgValue}>{user.organization?.name ?? 'Tum Sistem'}</Text>
+        <Text numberOfLines={1} style={styles.orgValue}>{user.organization?.name ?? 'Tüm Sistem'}</Text>
       </View>
       <Pressable onPress={() => onEdit(user)} style={({ pressed }) => [styles.editButton, pressed ? styles.pressed : null]}>
-        <Text style={styles.editButtonText}>Duzenle</Text>
+        <Text style={styles.editButtonText}>Düzenle</Text>
       </Pressable>
     </View>
   );
