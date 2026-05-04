@@ -193,10 +193,10 @@ function focusAdminSearch() {
       <aside class="admin-sidebar">
         <div class="admin-brand-block">
           <NuxtLink class="admin-brand-link" to="/">
-            <span class="admin-brand-mark">N</span>
+            <img class="admin-brand-logo" src="/qr-logo.svg" alt="" aria-hidden="true" />
             <span>
-              <strong>Nexus Enterprise</strong>
-              <small>OPS MANAGEMENT</small>
+              <strong>QR Talep</strong>
+              <small>WORKFLOW</small>
             </span>
           </NuxtLink>
         </div>

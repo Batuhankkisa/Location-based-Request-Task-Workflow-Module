@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import { authApi } from '../api/auth';
 import { getApiErrorMessage, setApiAccessToken } from '../api/client';
@@ -18,6 +19,44 @@ interface AuthState {
   clearError: () => void;
 }
 
+type WebStorage = {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+};
+
+const getWebStorage = () => {
+  return (globalThis as { localStorage?: WebStorage }).localStorage ?? null;
+};
+
+const tokenStorage = {
+  async getItem() {
+    if (Platform.OS === 'web') {
+      return getWebStorage()?.getItem(AUTH_TOKEN_KEY) ?? null;
+    }
+
+    return SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+  },
+
+  async setItem(value: string) {
+    if (Platform.OS === 'web') {
+      getWebStorage()?.setItem(AUTH_TOKEN_KEY, value);
+      return;
+    }
+
+    await SecureStore.setItemAsync(AUTH_TOKEN_KEY, value);
+  },
+
+  async deleteItem() {
+    if (Platform.OS === 'web') {
+      getWebStorage()?.removeItem(AUTH_TOKEN_KEY);
+      return;
+    }
+
+    await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+  }
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   status: 'idle',
   token: null,
@@ -28,7 +67,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ status: 'loading', error: null });
 
     try {
-      const storedToken = await SecureStore.getItemAsync(AUTH_TOKEN_KEY);
+      const storedToken = await tokenStorage.getItem();
 
       if (!storedToken) {
         setApiAccessToken(null);
@@ -47,7 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
     } catch (error) {
       setApiAccessToken(null);
-      await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+      await tokenStorage.deleteItem();
       set({
         status: 'unauthenticated',
         token: null,
@@ -67,9 +106,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
 
       if (remember) {
-        await SecureStore.setItemAsync(AUTH_TOKEN_KEY, response.accessToken);
+        await tokenStorage.setItem(response.accessToken);
       } else {
-        await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+        await tokenStorage.deleteItem();
       }
 
       setApiAccessToken(response.accessToken);
@@ -82,7 +121,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
     } catch (error) {
       setApiAccessToken(null);
-      await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+      await tokenStorage.deleteItem();
       set({
         status: 'unauthenticated',
         token: null,
@@ -95,7 +134,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   async logout() {
     setApiAccessToken(null);
-    await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
+    await tokenStorage.deleteItem();
     set({
       status: 'unauthenticated',
       token: null,

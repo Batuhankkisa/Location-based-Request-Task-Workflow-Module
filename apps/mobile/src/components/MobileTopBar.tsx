@@ -4,6 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import { Role } from '@lbrtw/shared';
 import type { AppStackParamList, AppTabParamList } from '../navigation/types';
+import { QrLogo } from './QrLogo';
 import { useAuthStore } from '../store/authStore';
 import { COLORS } from '../utils/constants';
 import { canManageOrganizations, canManageUsers, canSeeLocationsModule, canSeeQrModule } from '../utils/role';
@@ -38,7 +39,12 @@ export function MobileTopBar({ trailingInitial }: MobileTopBarProps) {
       >
         <Ionicons name="menu-outline" size={28} color={COLORS.heading} />
       </Pressable>
-      <Text style={styles.brand}>QRTALEP</Text>
+      <View style={styles.brandGroup}>
+        <View style={styles.topbarLogo}>
+          <QrLogo accessibilityLabel="QR Talep logo" size={25} />
+        </View>
+        <Text style={styles.brand}>QRTALEP</Text>
+      </View>
       <Pressable
         accessibilityLabel="Profil"
         accessibilityRole="button"
@@ -175,6 +181,21 @@ const styles = StyleSheet.create({
     color: COLORS.heading,
     fontSize: 18,
     fontWeight: '800'
+  },
+  brandGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  topbarLogo: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface
   },
   iconButton: {
     width: 40,

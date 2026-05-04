@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { AppButton } from '../../components/AppButton';
 import { AppInput } from '../../components/AppInput';
+import { QrLogo } from '../../components/QrLogo';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuthStore } from '../../store/authStore';
 import { API_BASE_URL, COLORS, LAYOUT } from '../../utils/constants';
@@ -49,7 +50,9 @@ export function LoginScreen() {
     <ScreenContainer scrollable contentContainerStyle={styles.content}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.keyboardArea}>
         <View style={styles.formCard}>
-          <Text style={styles.brandTitle}>QRTALEP</Text>
+          <View style={styles.brandMark}>
+            <QrLogo accessibilityLabel="QR Talep logo" size={72} />
+          </View>
           <Text style={styles.formTitle}>Admin ve Personel Login</Text>
           <Text style={styles.formSubtitle}>Guvenli JWT tabanli giris yapin.</Text>
 
@@ -123,11 +126,16 @@ const styles = StyleSheet.create({
   keyboardArea: {
     gap: 14
   },
-  brandTitle: {
-    color: COLORS.heading,
-    fontSize: 28,
-    fontWeight: '800',
-    textAlign: 'center'
+  brandMark: {
+    width: 88,
+    height: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface
   },
   formCard: {
     backgroundColor: COLORS.surface,

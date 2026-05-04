@@ -186,6 +186,16 @@ label {
   font-weight: 900;
 }
 
+.admin-brand-logo {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 8px;
+  background: #ffffff;
+  object-fit: contain;
+  padding: 5px;
+}
+
 .admin-brand-link strong,
 .admin-brand-link small {
   display: block;
@@ -574,6 +584,16 @@ label {
   color: #004ac6;
   font-size: 24px;
   font-weight: 900;
+}
+
+.login-brand-logo {
+  width: 86px;
+  height: 86px;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  object-fit: contain;
+  padding: 8px;
 }
 
 .login-brand h1 {

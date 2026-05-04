@@ -44,9 +44,9 @@ function showPasswordHelp() {
 <template>
   <section class="section narrow login-screen">
     <div class="login-brand">
-      <span class="login-brand-icon">N</span>
-      <h1>Nexus</h1>
-      <p>Enterprise Portal</p>
+      <img class="login-brand-logo" src="/qr-logo.svg" alt="QR Talep logosu" />
+      <h1>QR Talep</h1>
+      <p>Talep ve Gorev Yonetimi</p>
     </div>
 
     <div class="panel auth-card">
