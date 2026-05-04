@@ -1,389 +1,163 @@
-# Location-based-Request-Task-Workflow-Module
+# QR Talep ve Gorev Yonetimi
 
-QR okutuldugunda public kullanicinin lokasyona bagli talep actigi, talebin otomatik task'a donustugu ve personel tarafinin JWT ile korundugu NestJS + Nuxt monorepo.
+QR Talep, ziyaretci veya hasta tarafindan QR kod ile talep olusturulan, talebin otomatik goreve donustugu, admin/supervisor/staff rollerinin web ve mobil arayuzlerden takip edebildigi multi-organization bir workflow uygulamasidir.
 
-Sistem artik tek-hastane demo degil; `Organization` modeli ile multi-organization / multi-tenant calisir.
+Monorepo icinde uc ana uygulama bulunur:
 
-## Yapi
+- `apps/api`: NestJS API, Prisma schema, migration ve seed dosyalari
+- `apps/web`: Nuxt 3 web uygulamasi ve public QR talep akisi
+- `apps/mobile`: Expo / React Native admin ve supervisor mobil uygulamasi
+
+## Kullanilan Teknolojiler ve Mimari
+
+**Monorepo**
+
+- `pnpm` workspace
+- Ortak tipler ve enumlar icin `packages/shared`
+- Koku `package.json` uzerinden API, web, mobile ve Prisma komutlari
+
+**Backend**
+
+- NestJS 10
+- Prisma ORM 6
+- PostgreSQL
+- JWT auth ve role-based authorization
+- bcryptjs ile sifre hashleme
+- Multer/Nest interceptor ile public request medya upload akisi
+- Opsiyonel Telegram Bot API bildirimi
+
+**Web**
+
+- Nuxt 3
+- Vue 3
+- TypeScript
+- Public QR sayfasi: `/q/:token`
+- Admin panel: gorev, QR, lokasyon, kurum ve kullanici yonetimi
+
+**Mobile**
+
+- Expo SDK 54
+- React Native 0.81
+- React Navigation
+- Zustand
+- Expo SecureStore ile token saklama
+- Admin ve supervisor icin native mobil ekranlar
+
+**Mimari ozet**
 
 ```text
-/
-  apps/
-    api/        NestJS API, Prisma schema, migrations, seed
-    web/        Nuxt web uygulamasi
-    mobile/     Expo / React Native uygulamasi
-  packages/
-    shared/     Ortak enumlar
-  infra/
-    docker-compose.yml
-  .env.example
-  README.md
+Public kullanici / hasta
+        |
+        v
+Nuxt public QR sayfasi (/q/:token)
+        |
+        v
+NestJS API (/public/qr, /public/requests)
+        |
+        v
+PostgreSQL + Prisma
+        |
+        +--> Task olusur
+        +--> QR scan log yazilir
+        +--> Telegram bildirimi gonderilebilir
+
+Admin / Supervisor / Staff
+        |
+        +--> Web admin paneli
+        +--> Expo mobil uygulama
+        |
+        v
+JWT korumali API endpointleri
 ```
 
-## Teknolojiler
+## Roller ve Yetki Yapisi
 
-- Monorepo: pnpm workspace
-- API: NestJS, Prisma, PostgreSQL
-- Web: Nuxt 3, Vue 3, TypeScript
-- Mobile: Expo, React Native, Zustand
-- Auth: JWT access token + role-based authorization
-- Password hashing: bcryptjs
+- `ADMIN`: Tum kurumlari, kullanicilari, lokasyonlari, QR kayitlarini ve tasklari yonetir.
+- `SUPERVISOR`: Sadece kendi kurumundaki verileri gorur. Task onay/red, QR ve lokasyon islemleri yapabilir.
+- `STAFF`: Sadece kendi kurumundaki tasklari gorur. Task baslatma ve tamamlama aksiyonlari yapabilir.
 
-## Multi-organization modeli
+Sistem multi-tenant calisir. `Organization` ana tenant modelidir. `SUPERVISOR` ve `STAFF` kullanicilari `organizationId` ile tek kuruma baglanir. `ADMIN` global calisabilir.
 
-Yeni ust seviye tenant modeli `Organization`.
+## Kurulum ve Calistirma
 
-Alanlar:
+### Gereksinimler
 
-- `id`
-- `name`
-- `code`
-- `type`
-- `isActive`
-- `telegramEnabled`
-- `telegramChatId`
-- `telegramNotificationThreadId`
-- `createdAt`
-- `updatedAt`
+- Node.js 20 veya ustu
+- pnpm 9.15.4
+- Docker Desktop
+- Git
+- Mobile icin macOS tarafinda Xcode ve iOS Simulator
+- Fiziksel telefonda test icin Expo Go
 
-Desteklenen `OrganizationType` degerleri:
+pnpm aktif degilse:
 
-- `HOSPITAL`
-- `CLINIC`
-- `HOTEL`
-- `RESTAURANT`
-- `GENERAL`
+```bash
+corepack enable
+corepack prepare pnpm@9.15.4 --activate
+```
 
-## Veri modeli
+### 1. Bagimliliklari yukle
 
-### Organization
+```bash
+pnpm install
+```
 
-Her kurum icin ayri bir kayit tutulur.
+### 2. Ortam dosyalarini olustur
 
-### Location
+Kok `.env`:
 
-`Location` kayitlari artik `organizationId` tasir.
-Mevcut parent-child agaci korunur.
+```bash
+cp .env.example .env
+```
 
-Bu repoda uyumluluk icin kurumun root lokasyonu da tutulur:
+Mobil `.env`:
 
-- `Organization`
-  - root `Location` (`type=ORGANIZATION`)
-    - `FLOOR`
-      - `ROOM`
+```bash
+cp apps/mobile/.env.example apps/mobile/.env
+```
 
-Bu sayede eski lokasyon agaci ve public QR akisinin davranisi bozulmadan tenant modeli eklenmis olur.
-
-### QrCode
-
-QR kayitlari organization'a `location.organizationId` uzerinden baglanir.
-`token` global unique kalir; boylece public `/q/:token` ve `/public/qr/:token` akisi degismez.
-
-### User
-
-MVP icin ayrik membership tablosu yerine `User.organizationId` yaklasimi secildi.
-
-Gerekce:
-
-- mevcut role modeli zaten tek kullanicili basit akisa sahip
-- `ADMIN` global kalabiliyor
-- `SUPERVISOR` ve `STAFF` icin tek organization scope yeterli
-- mobile ve auth contract'ini minimum degisiklikle koruyor
-
-Kural:
-
-- `ADMIN`: `organizationId = null` olabilir, global erisimlidir
-- `SUPERVISOR` ve `STAFF`: aktif bir organization'a bagli olmalidir
-
-## Roller ve scope kurallari
-
-- `ADMIN`
-  - tum organizationlari gorur
-  - organization olusturur/gunceller
-  - tum task, QR, location ve user kayitlarini gorur
-  - `organizationId` query param'i ile kuruma gore filtreleyebilir
-- `SUPERVISOR`
-  - sadece kendi organization'indaki tasklari gorur
-  - sadece kendi organization'indaki QR kayitlarini gorur
-  - sadece kendi organization'indaki location agacini gorur
-  - `approve` ve `reject` yapabilir
-- `STAFF`
-  - sadece kendi organization'indaki tasklari gorur
-  - `start` ve `complete` yapabilir
-  - QR yonetimi yapamaz
-
-Detay endpointlerinde baska organization verisine erisim denemeleri `404` ile kapatilir; boylece veri sizmasi olmaz.
-
-## Public akis
-
-Public akislar degismedi:
-
-- `GET /public/qr/:token`
-- `POST /public/requests`
-- Nuxt public sayfasi: `/q/[token]`
-
-Token cozulurken su zincir kullanilir:
-
-- `QrCode`
-- `Location`
-- `Organization`
-
-QR veya organization pasifse public akis ayni sekilde "bulunamadi / pasif" davranisiyla kapanir.
-
-## API yuzeyi
-
-### Public kalan route'lar
-
-- `GET /health`
-- `GET /public/qr/:token`
-- `POST /public/requests`
-
-### Auth route'lari
-
-- `POST /auth/login`
-- `GET /auth/me`
-
-`/auth/me` ve login response'u artik organization ozetini de doner:
-
-- `organizationId`
-- `organization`
-
-### Task route'lari
-
-- `GET /tasks`
-- `GET /tasks/:id`
-- `PATCH /tasks/:id/start`
-- `PATCH /tasks/:id/complete`
-- `PATCH /tasks/:id/approve`
-- `PATCH /tasks/:id/reject`
-
-`ADMIN` icin opsiyonel query:
-
-- `GET /tasks?organizationId=<orgId>`
-
-### QR route'lari
-
-- `GET /qr-codes`
-- `GET /qr-codes/:id`
-- `GET /qr-codes/:id/scan-logs`
-- `POST /qr-codes`
-- `PATCH /qr-codes/:id/activate`
-- `PATCH /qr-codes/:id/deactivate`
-
-`ADMIN` icin opsiyonel query:
-
-- `GET /qr-codes?organizationId=<orgId>`
-
-### Location route'lari
-
-- `GET /locations/tree`
-- `POST /locations`
-
-`ADMIN` icin opsiyonel query:
-
-- `GET /locations/tree?organizationId=<orgId>`
-
-`POST /locations` artik `organizationId` alabilir. `parentId` verilirse organization parent'tan turetilir.
-
-### User route'lari
-
-- `GET /users`
-- `POST /users`
-- `PATCH /users/:id`
-
-`ADMIN`, kullanicilari organization'a baglayabilir veya global admin yapabilir.
-
-Opsiyonel query:
-
-- `GET /users?organizationId=<orgId>`
-
-### Organization yonetim route'lari
-
-Sadece `ADMIN`:
-
-- `GET /organizations`
-- `POST /organizations`
-- `GET /organizations/:id`
-- `PATCH /organizations/:id`
-- `GET /organizations/:id/locations/tree`
-- `GET /organizations/:id/qrs`
-- `GET /organizations/:id/tasks`
-
-`POST /organizations` yeni kurumla birlikte root organization lokasyonunu da olusturur.
-
-## Seed verisi
-
-Seed artik en az iki organization kurar:
-
-- `Ozel Hastane A`
-- `Ozel Hastane B`
-
-Her organization icin:
-
-- root organization lokasyonu
-- katlar
-- odalar
-- QR tokenlari
-
-Eski demo tokenlari korunur:
-
-- `room-401-demo-token`
-- `room-402-demo-token`
-- `hsp-a-*`
-
-Yeni Hastane B token ornekleri:
-
-- `hsp-b-f1-r101-demo`
-- `hsp-b-f1-r102-demo`
-- `hsp-b-f2-r201-demo`
-
-## Demo kullanicilar
-
-Seed ile uretilir:
-
-- `admin@example.com / Admin123!` -> global admin
-- `supervisor.a@example.com / Admin123!` -> Hastane A supervisor
-- `staff.a@example.com / Admin123!` -> Hastane A staff
-- `supervisor.b@example.com / Admin123!` -> Hastane B supervisor
-- `staff.b@example.com / Admin123!` -> Hastane B staff
-
-Eski tek-kurum demo kullanicilarindan `supervisor@example.com` ve `staff@example.com` varsa seed bunlari scoped `.a` kullanicilarina tasimaya calisir.
-
-## Web davranisi
-
-Admin ekranlari organization-aware olacak sekilde guncellendi:
-
-- `/admin/tasks`
-- `/admin/qrs`
-- `/admin/locations`
-- `/admin/organizations`
-
-Davranis:
-
-- `ADMIN`: organization secici gorur, tum kurumlar veya tek kurum bazli calisabilir
-- `SUPERVISOR` / `STAFF`: sadece kendi kurumunu gorur
-- detay ekranlari organization context'ini gosterir
-
-## Mobile davranisi
-
-Mobile tarafinda endpoint path'leri ayni kalir:
-
-- `/tasks`
-- `/tasks/:id`
-- `/qr-codes`
-- `/qr-codes/:id`
-
-Ek organization secimi gerekmez.
-Login olan kullanici backend scope'u sayesinde kendi organization verisini gorur.
-
-## Telegram bildirimleri
-
-Yeni public QR talebi olustugunda API, ilgili kurumun Telegram ayarlari aktifse Telegram Bot API `sendMessage` endpoint'i ile metin mesaji gonderir.
-
-Davranis:
-
-- bot token tek merkezidir ve sadece env'den okunur: `TELEGRAM_BOT_TOKEN`
-- chat ayari organization seviyesindedir: `telegramEnabled`, `telegramChatId`, `telegramNotificationThreadId`
-- `telegramNotificationThreadId` forum/topic kullanan Telegram gruplari icin opsiyoneldir
-- Telegram webhook aktifse bot bildirimine `yapildi` veya `yapıldı` diye cevap vermek task'i `DONE_WAITING_APPROVAL` durumuna alir
-- webhook secret opsiyoneldir: `TELEGRAM_WEBHOOK_SECRET`
-- Telegram hatasi ana akis icin fail sayilmaz; request, task, task history, media ve scan log kayitlari korunur
-- hata API loglarina yazilir
-
-Mesaj icerigi:
-
-- organization adi
-- lokasyon path'i
-- talep metni
-- transcript varsa kisa hali
-- request zamani
-- task status
-- task id
-- `ADMIN_WEB_BASE_URL` tanimliysa admin task detay linki
-
-Kurulum:
-
-1. Telegram'da BotFather ile yeni bot olustur ve token al.
-2. Botu hedef Telegram grubuna ekle.
-3. Grup mesajlarini okuyabilmesi icin gerekiyorsa BotFather uzerinden privacy mode'u kapat.
-4. Grubun `chat_id` degerini al. Supergroup ID'leri genelde `-100...` ile baslar.
-5. Admin web'de `/admin/organizations` ekranindan ilgili kurum icin `Telegram bildirimi gonder` secenegini ac, `Chat ID` alanini doldur ve kaydet.
-6. Forum topic kullaniyorsan `Topic ID` alanina Telegram `message_thread_id` degerini gir.
-7. Komutla task kapatmak icin webhook'u public API adresine bagla:
-   `https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<API_PUBLIC_URL>/telegram/webhook`
-8. Secret kullanacaksan ayni webhook kurulumuna `secret_token=<TELEGRAM_WEBHOOK_SECRET>` ekle ve API env'inde ayni degeri tanimla.
-
-## Prisma ve migration
-
-Onemli schema degisiklikleri:
-
-- yeni `Organization` modeli
-- yeni `OrganizationType` enum
-- `Organization.telegramEnabled`
-- `Organization.telegramChatId`
-- `Organization.telegramNotificationThreadId`
-- `Location.organizationId`
-- `User.organizationId`
-- `Location` icin `@@unique([organizationId, code])`
-
-Yeni migration:
-
-- `apps/api/prisma/migrations/20260424000000_multi_organization`
-- `apps/api/prisma/migrations/20260427000000_organization_telegram_settings`
-
-Migration, mevcut tek-kurum root lokasyonlardan organization kaydi uretir ve eski location agacini `organizationId` ile backfill eder.
-Telegram migration'i mevcut organization kayitlarina varsayilan kapali bildirim ayarlarini ekler.
-
-## Lokal kurulum
-
-Windows PowerShell `pnpm.ps1` policy sorunu varsa `pnpm` yerine `pnpm.cmd` kullan.
+Windows PowerShell kullaniyorsan `cp` yerine:
 
 ```powershell
-pnpm.cmd install
 Copy-Item .env.example .env
+Copy-Item apps/mobile/.env.example apps/mobile/.env
 ```
 
-Gerekli env ornegi:
+### 3. Local database'i baslat
 
-```text
-DATABASE_URL=postgresql://workflow:workflow@localhost:5432/workflow?schema=public
-API_PORT=3001
-NUXT_PUBLIC_API_BASE_URL=http://localhost:3001
-JWT_SECRET=change-me-for-production
-JWT_EXPIRES_IN=1d
-TELEGRAM_BOT_TOKEN=
-ADMIN_WEB_BASE_URL=http://localhost:3000
-```
-
-## Lokal database ve seed
-
-Docker ile local PostgreSQL kaldirmak icin:
-
-```powershell
+```bash
 docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
-Sonra:
+Bu komut local PostgreSQL ve Redis containerlarini acabilir. Redis su an zorunlu runtime bagimliligi degildir, ileri queue/cache isleri icin hazir tutulur.
 
-```powershell
-pnpm.cmd prisma:migrate:deploy
-pnpm.cmd prisma:seed
+### 4. Migration ve seed calistir
+
+```bash
+pnpm prisma:migrate
+pnpm prisma:seed
 ```
 
-## Calistirma
+Hazir migrationlari sadece uygulamak istersen:
 
-Tum workspace:
-
-```powershell
-pnpm.cmd dev
+```bash
+pnpm prisma:deploy
+pnpm prisma:seed
 ```
 
-Ayrik:
+### 5. API ve web'i calistir
 
-```powershell
-pnpm.cmd dev:api
-pnpm.cmd dev:web
-pnpm.cmd dev:mobile
+API ve web beraber:
+
+```bash
+pnpm dev
+```
+
+Ayrik calistirma:
+
+```bash
+pnpm dev:api
+pnpm dev:web
 ```
 
 Adresler:
@@ -392,43 +166,519 @@ Adresler:
 - API: `http://localhost:3001`
 - Health: `http://localhost:3001/health`
 
-## Lokal test akisi
+### 6. Mobile'i calistir
+
+iOS Simulator:
+
+```bash
+pnpm --filter @lbrtw/mobile ios
+```
+
+Expo Metro:
+
+```bash
+pnpm dev:mobile
+```
+
+Fiziksel telefon ve Expo Go icin tunnel:
+
+```bash
+pnpm dev:mobile:tunnel
+```
+
+iOS Simulator icin `apps/mobile/.env` icinde `localhost` kullanilabilir:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
+```
+
+Fiziksel telefonda `localhost` telefonun kendisini ifade eder. Bu durumda Mac'in local IP adresini kullan:
+
+```bash
+ipconfig getifaddr en0
+```
+
+Ornek:
+
+```env
+EXPO_PUBLIC_API_BASE_URL=http://192.168.1.8:3001
+```
+
+Telefon ve bilgisayar ayni agda olmali, API `3001` portunda acik olmalidir.
+
+## Ortam Degiskenleri ve Config
+
+Kok `.env.example` API, web ve Docker icin temel config'i verir.
+
+| Degisken | Kullanildigi yer | Aciklama |
+| --- | --- | --- |
+| `POSTGRES_USER` | Docker | Local PostgreSQL kullanici adi |
+| `POSTGRES_PASSWORD` | Docker | Local PostgreSQL sifresi |
+| `POSTGRES_DB` | Docker | Local PostgreSQL database adi |
+| `DATABASE_URL` | API / Prisma | PostgreSQL connection string |
+| `REDIS_URL` | Infra | Opsiyonel Redis URL |
+| `API_PORT` | API | Local API portu, varsayilan `3001` |
+| `PORT` | API deploy | Render gibi ortamlarda servis portu |
+| `JWT_SECRET` | API | JWT imzalama secret'i. Production'da degistirilmelidir |
+| `JWT_EXPIRES_IN` | API | Access token suresi, ornek `1d` |
+| `CORS_ORIGIN` | API | Virgul ile ayrilmis izinli browser origin listesi |
+| `CORS_ORIGINS` | API | `CORS_ORIGIN` alternatifi |
+| `UPLOAD_DIR` | API | Upload dosyalari icin local klasor |
+| `TELEGRAM_BOT_TOKEN` | API | Opsiyonel Telegram bot token'i |
+| `TELEGRAM_WEBHOOK_SECRET` | API | Opsiyonel Telegram webhook secret'i |
+| `ADMIN_WEB_BASE_URL` | API | Telegram mesajlarina admin task linki eklemek icin |
+| `NUXT_PUBLIC_API_BASE_URL` | Web | Nuxt tarafinin kullanacagi public API URL'i |
+| `EXPO_PUBLIC_API_BASE_URL` | Mobile | Expo uygulamasinin kullanacagi API URL'i |
+
+Production ortaminda `.env.example` degerlerini birebir kullanma. Ozellikle `JWT_SECRET`, `DATABASE_URL` ve `TELEGRAM_BOT_TOKEN` secret olarak saklanmalidir.
+
+## Ana Moduller ve Klasor Yapisi
+
+```text
+/
+  apps/
+    api/
+      prisma/
+        schema.prisma
+        seed.ts
+        migrations/
+      src/
+        auth/
+        health/
+        locations/
+        notifications/
+        organizations/
+        prisma/
+        qr-codes/
+        requests/
+        tasks/
+        users/
+    web/
+      pages/
+        q/[token].vue
+        login.vue
+        admin/
+      components/
+      composables/
+      assets/css/
+    mobile/
+      src/
+        api/
+        components/
+        hooks/
+        navigation/
+        screens/
+        store/
+        types/
+        utils/
+  packages/
+    shared/
+      src/index.ts
+  infra/
+    docker-compose.yml
+  render.yaml
+```
+
+**API modulleri**
+
+- `auth`: Login, `/auth/me`, JWT guard, role guard, organization scope.
+- `requests`: Public QR resolve ve public request olusturma akisi.
+- `tasks`: Task listeleme, detay ve status transition aksiyonlari.
+- `qr-codes`: QR listeleme, detay, scan log, activate/deactivate ve QR olusturma.
+- `locations`: Kurum bazli lokasyon agaci ve lokasyon olusturma.
+- `organizations`: Admin kurum yonetimi ve kuruma bagli task/QR/lokasyon sorgulari.
+- `users`: Admin kullanici yonetimi.
+- `notifications`: Telegram bildirimi ve webhook cevabi ile task tamamlama.
+- `prisma`: Prisma client lifecycle.
+- `health`: Health check.
+
+**Web modulleri**
+
+- `pages/q/[token].vue`: Ziyaretci/hasta public talep ekrani.
+- `pages/login.vue`: Admin/supervisor/staff login.
+- `pages/admin/tasks`: Task listesi ve detay akisi.
+- `pages/admin/qrs`: QR listesi, detay ve QR yonetimi.
+- `pages/admin/locations`: Lokasyon agaci.
+- `pages/admin/organizations`: Kurum ve Telegram ayarlari.
+- `pages/admin/users.vue`: Kullanici yonetimi.
+- `composables/useApi.ts`: API client yardimcisi.
+- `composables/useAuth.ts`: Web auth state ve token yonetimi.
+
+**Mobile modulleri**
+
+- `src/navigation`: Auth stack, app tab navigator ve profil stack akisi.
+- `src/screens/auth`: Login.
+- `src/screens/tasks`: Task listesi ve detay.
+- `src/screens/qrs`: QR listesi ve detay.
+- `src/screens/locations`: Lokasyon agaci.
+- `src/screens/organizations`: Kurum ozeti ve yonetim ekranlari.
+- `src/screens/users`: Admin kullanici yonetimi.
+- `src/screens/profile`: Profil ve cikis.
+- `src/store/authStore.ts`: Zustand auth store.
+- `src/api`: Auth, task, QR ve admin API client fonksiyonlari.
+
+## Veritabani, Migration ve Seed
+
+Veritabani Prisma ile yonetilir. Ana schema:
+
+```text
+apps/api/prisma/schema.prisma
+```
+
+Temel modeller:
+
+- `Organization`
+- `User`
+- `Location`
+- `QrCode`
+- `VisitorRequest`
+- `RequestMedia`
+- `Task`
+- `TaskHistory`
+- `QrScanLog`
+
+Enumlar:
+
+- `OrganizationType`: `HOSPITAL`, `CLINIC`, `HOTEL`, `RESTAURANT`, `GENERAL`
+- `LocationType`: `ORGANIZATION`, `FLOOR`, `ROOM`, `AREA`
+- `RequestChannel`: `QR_WEB`
+- `TaskStatus`: `NEW`, `IN_PROGRESS`, `DONE_WAITING_APPROVAL`, `APPROVED`, `REJECTED`
+- `QrScanStatus`: `RESOLVED`, `INACTIVE`, `TOKEN_NOT_FOUND`, `REQUEST_CREATED`, `REQUEST_FAILED`
+- `RequestMediaType`: `IMAGE`, `AUDIO`
+- `Role`: `ADMIN`, `SUPERVISOR`, `STAFF`
+
+Migration klasoru:
+
+```text
+apps/api/prisma/migrations/
+```
+
+Mevcut migrationlar:
+
+- `20260419000000_init`
+- `20260419000100_add_task_reject_metadata`
+- `20260420000000_qr_metadata_and_scan_logs`
+- `20260420010000_request_media_uploads`
+- `20260421000000_auth_users`
+- `20260424000000_multi_organization`
+- `20260427000000_organization_telegram_settings`
+
+Prisma komutlari:
+
+```bash
+pnpm prisma:generate
+pnpm prisma:migrate
+pnpm prisma:deploy
+pnpm prisma:seed
+```
+
+Seed dosyasi:
+
+```text
+apps/api/prisma/seed.ts
+```
+
+Seed iki demo kurum olusturur:
+
+- `Ozel Hastane A`
+- `Ozel Hastane B`
+
+Her kurum icin root lokasyon, katlar, odalar ve QR tokenlari uretilir.
+
+Demo kullanicilar:
+
+| Rol | Email | Sifre |
+| --- | --- | --- |
+| Admin | `admin@example.com` | `Admin123!` |
+| Hastane A Supervisor | `supervisor.a@example.com` | `Admin123!` |
+| Hastane A Staff | `staff.a@example.com` | `Admin123!` |
+| Hastane B Supervisor | `supervisor.b@example.com` | `Admin123!` |
+| Hastane B Staff | `staff.b@example.com` | `Admin123!` |
+
+Demo public QR URL ornekleri:
+
+- `http://localhost:3000/q/room-401-demo-token`
+- `http://localhost:3000/q/room-402-demo-token`
+- `http://localhost:3000/q/hsp-a-f1-r101-demo`
+- `http://localhost:3000/q/hsp-b-f1-r101-demo`
+
+## API Endpointleri ve Temel Akislar
+
+Tum korumali endpointlerde header:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+### Public endpointler
+
+| Method | Endpoint | Aciklama |
+| --- | --- | --- |
+| `GET` | `/health` | API health check |
+| `GET` | `/public/qr/:token` | QR token cozer, lokasyon ve kurum bilgisini dondurur |
+| `POST` | `/public/requests` | Ziyaretci/hasta talebi olusturur, task uretir |
+| `POST` | `/telegram/webhook` | Opsiyonel Telegram webhook cevabini isler |
+
+`POST /public/requests` form-data ile `images`, `image` ve `audio` upload alanlarini destekler.
+
+### Auth endpointleri
+
+| Method | Endpoint | Aciklama |
+| --- | --- | --- |
+| `POST` | `/auth/login` | Email/sifre ile access token alir |
+| `GET` | `/auth/me` | Aktif kullanici, rol ve organization bilgisini dondurur |
+
+### Task endpointleri
+
+| Method | Endpoint | Roller | Aciklama |
+| --- | --- | --- | --- |
+| `GET` | `/tasks` | ADMIN, SUPERVISOR, STAFF | Task listesi |
+| `GET` | `/tasks/:id` | ADMIN, SUPERVISOR, STAFF | Task detay |
+| `PATCH` | `/tasks/:id/start` | ADMIN, SUPERVISOR, STAFF | Task'i `IN_PROGRESS` yapar |
+| `PATCH` | `/tasks/:id/complete` | ADMIN, SUPERVISOR, STAFF | Task'i `DONE_WAITING_APPROVAL` yapar |
+| `PATCH` | `/tasks/:id/approve` | ADMIN, SUPERVISOR | Task'i onaylar |
+| `PATCH` | `/tasks/:id/reject` | ADMIN, SUPERVISOR | Task'i reddeder |
+
+`ADMIN` icin opsiyonel query:
+
+```text
+GET /tasks?organizationId=<orgId>
+```
+
+### QR endpointleri
+
+| Method | Endpoint | Roller | Aciklama |
+| --- | --- | --- | --- |
+| `GET` | `/qr-codes` | ADMIN, SUPERVISOR | QR listesi |
+| `GET` | `/qr-codes/:id` | ADMIN, SUPERVISOR | QR detay |
+| `GET` | `/qr-codes/:id/scan-logs` | ADMIN, SUPERVISOR | QR scan loglari |
+| `POST` | `/qr-codes` | ADMIN, SUPERVISOR | QR olusturur |
+| `PATCH` | `/qr-codes/:id/activate` | ADMIN, SUPERVISOR | QR aktif eder |
+| `PATCH` | `/qr-codes/:id/deactivate` | ADMIN, SUPERVISOR | QR pasif eder |
+
+`ADMIN` icin opsiyonel query:
+
+```text
+GET /qr-codes?organizationId=<orgId>
+```
+
+### Lokasyon endpointleri
+
+| Method | Endpoint | Roller | Aciklama |
+| --- | --- | --- | --- |
+| `GET` | `/locations/tree` | ADMIN, SUPERVISOR | Lokasyon agaci |
+| `POST` | `/locations` | ADMIN, SUPERVISOR | Lokasyon olusturur |
+
+`ADMIN` icin opsiyonel query:
+
+```text
+GET /locations/tree?organizationId=<orgId>
+```
+
+### Kurum endpointleri
+
+Sadece `ADMIN`:
+
+| Method | Endpoint | Aciklama |
+| --- | --- | --- |
+| `GET` | `/organizations` | Kurum listesi |
+| `POST` | `/organizations` | Kurum olusturur, root lokasyonu da acar |
+| `GET` | `/organizations/:id` | Kurum detay |
+| `PATCH` | `/organizations/:id` | Kurum ve Telegram ayarlarini gunceller |
+| `GET` | `/organizations/:id/locations/tree` | Kurum lokasyon agaci |
+| `GET` | `/organizations/:id/qrs` | Kurum QR listesi |
+| `GET` | `/organizations/:id/tasks` | Kurum task listesi |
+
+### Kullanici endpointleri
+
+Sadece `ADMIN`:
+
+| Method | Endpoint | Aciklama |
+| --- | --- | --- |
+| `GET` | `/users` | Kullanici listesi |
+| `POST` | `/users` | Kullanici olusturur |
+| `PATCH` | `/users/:id` | Kullanici gunceller |
+
+Opsiyonel query:
+
+```text
+GET /users?organizationId=<orgId>
+```
+
+## Temel Kullanici Akislari
+
+**Public talep akisi**
+
+1. Kullanici `http://localhost:3000/q/<token>` adresini acar.
+2. Web, API'den `/public/qr/:token` ile QR ve lokasyon bilgisini alir.
+3. Kullanici talep metni ve opsiyonel medya ile formu gonderir.
+4. API `VisitorRequest`, `Task`, `TaskHistory` ve `QrScanLog` kayitlarini olusturur.
+5. Kurumda Telegram aktifse bildirim gonderilir.
+
+**Staff task akisi**
+
+1. Staff web'e giris yapar.
+2. Sadece kendi kurumundaki tasklari gorur.
+3. Task'i baslatir.
+4. Isi tamamlayinca task `DONE_WAITING_APPROVAL` durumuna gecer.
+
+**Supervisor onay akisi**
+
+1. Supervisor web veya mobile'da kendi kurum tasklarini gorur.
+2. Tamamlanan tasklari onaylar veya reddeder.
+3. Reddedilen taskta not bilgisi tutulabilir.
+
+**Admin yonetim akisi**
+
+1. Admin web veya mobile'da global gorunum alir.
+2. Kurum, lokasyon, QR ve kullanici kayitlarini yonetir.
+3. Web admin panelinde kurum secici ile tek kuruma filtreleyebilir.
+
+## Telegram Bildirimleri
+
+Yeni public QR talebi olustugunda API, kurumun Telegram ayarlari aktifse Telegram Bot API `sendMessage` endpoint'i ile mesaj gonderir.
+
+Kurum bazli alanlar:
+
+- `telegramEnabled`
+- `telegramChatId`
+- `telegramNotificationThreadId`
+
+Env bazli alanlar:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET`
+- `ADMIN_WEB_BASE_URL`
+
+Webhook ile bot mesajina `yapildi` cevabi verilirse ilgili task `DONE_WAITING_APPROVAL` durumuna alinabilir. Telegram hatalari ana public request akisini bozmaz, hata API loglarina yazilir.
+
+Webhook kurulum ornegi:
+
+```text
+https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<API_PUBLIC_URL>/telegram/webhook
+```
+
+Secret kullaniliyorsa:
+
+```text
+https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<API_PUBLIC_URL>/telegram/webhook&secret_token=<TELEGRAM_WEBHOOK_SECRET>
+```
+
+## Test, Build ve Deploy Komutlari
+
+### Build
+
+Tum workspace:
+
+```bash
+pnpm build
+```
+
+Tek tek:
+
+```bash
+pnpm build:api
+pnpm build:web
+pnpm build:mobile
+```
+
+Mobile TypeScript kontrolu:
+
+```bash
+pnpm --filter @lbrtw/mobile build
+```
+
+### Test
+
+Repoda su an otomatik test script'i bulunmuyor. Degisikliklerden sonra minimum dogrulama icin:
+
+```bash
+pnpm build:api
+pnpm build:web
+pnpm build:mobile
+```
+
+Manuel smoke test:
 
 1. `docker compose --env-file .env -f infra/docker-compose.yml up -d`
-2. `pnpm.cmd prisma:migrate:deploy`
-3. `pnpm.cmd prisma:seed`
-4. `pnpm.cmd dev`
-5. `http://localhost:3000/q/room-401-demo-token` ile Hastane A public akisini dene
-6. `http://localhost:3000/q/hsp-b-f1-r101-demo` ile Hastane B public akisini dene
-7. `staff.a@example.com / Admin123!` ile giris yap, sadece Hastane A tasklarini gordugunu kontrol et
-8. `staff.b@example.com / Admin123!` ile giris yap, sadece Hastane B tasklarini gordugunu kontrol et
-9. `supervisor.a@example.com` ile Hastane A tasklari icin `approve/reject` dene
-10. `admin@example.com` ile `/admin/organizations`, `/admin/tasks`, `/admin/qrs`, `/admin/locations` ekranlarinda organization seciciyi test et
-11. Telegram testi icin `.env` icinde `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` ve `ADMIN_WEB_BASE_URL` tanimla
-12. `/admin/organizations` ekraninda test kurumuna `telegramChatId` bagla ve Telegram'i aktif et
-13. `http://localhost:3000/q/room-401-demo-token` uzerinden talep olustur; talep/task olusurken Telegram grubuna mesaj dustugunu kontrol et
-14. Bot bildirimine `yapildi` diye cevap ver; task'in `DONE_WAITING_APPROVAL` durumuna gectigini kontrol et
+2. `pnpm prisma:deploy`
+3. `pnpm prisma:seed`
+4. `pnpm dev`
+5. `http://localhost:3000/q/room-401-demo-token` ile public talep olustur.
+6. `admin@example.com / Admin123!` ile web admin paneline gir.
+7. Task'in olustugunu kontrol et.
+8. `supervisor.a@example.com / Admin123!` ile mobile girip Hastane A tasklarini kontrol et.
 
-## Staging / Render test akisi
+### Production start
 
-1. Render Postgres'i ayakta tut
-2. API servisinde `TELEGRAM_BOT_TOKEN` secret env degerini tanimla
-3. API servisinde `ADMIN_WEB_BASE_URL` degerini web servis URL'i yap
-4. API deploy oncesi `pnpm prisma:migrate:deploy` calistir
-5. `pnpm prisma:seed` ile staging verisini yukle
-6. `admin@example.com` ile login olup organization ekranindan kayitlari kontrol et
-7. Test organization'ina Telegram chat id bagla ve bildirimi aktif et
-8. Public QR testlerini her iki organization tokeni ile dogrula
+API:
 
-## Derleme dogrulamasi
+```bash
+pnpm start:api
+```
 
-Kod degisikligi sonrasi lokal olarak dogrulananlar:
+Web:
 
-- `pnpm.cmd --filter @lbrtw/api build`
-- `pnpm.cmd --filter @lbrtw/web build`
-- `pnpm.cmd --filter @lbrtw/mobile build`
+```bash
+pnpm start:web
+```
 
-Not:
+Production migration:
 
-- Bu oturumda local PostgreSQL ayakta olmadigi icin `pnpm.cmd prisma:migrate:deploy` komutu uygulanamadi
-- migration dosyasi repo icine eklendi; database ayaga kalktiginda ayni komutla test edebilirsin
+```bash
+pnpm prisma:migrate:deploy
+```
+
+### Render deploy
+
+Repo kokunde `render.yaml` bulunur.
+
+Render servisleri:
+
+- `lbrtw-api-staging`
+- `lbrtw-web-staging`
+- `lbrtw-postgres-staging`
+
+Blueprint komutlari:
+
+- API build: `corepack enable && pnpm install --frozen-lockfile && pnpm build:api`
+- API pre-deploy: `pnpm prisma:migrate:deploy`
+- API start: `pnpm start:api`
+- Web build: `corepack enable && pnpm install --frozen-lockfile && pnpm build:web`
+- Web start: `pnpm start:web`
+
+Render free planda `preDeployCommand` calismayabilir. Bu durumda migration komutunu manuel calistir:
+
+```bash
+pnpm prisma:migrate:deploy
+```
+
+## Sik Karsilasilan Durumlar
+
+**`localhost:3001` ana sayfasi 404 donuyor**
+
+Normaldir. API root endpoint'i yok. Health kontrolu:
+
+```text
+http://localhost:3001/health
+```
+
+**Fiziksel telefonda API'ye baglanmiyor**
+
+`EXPO_PUBLIC_API_BASE_URL` icinde `localhost` yerine bilgisayarin local IP adresini kullan.
+
+**CORS hatasi**
+
+Production veya farkli domain kullanirken API env'ine web origin'ini ekle:
+
+```env
+CORS_ORIGIN=https://web-domain.example
+```
+
+**Migration database'e baglanamiyor**
+
+Docker container'i kontrol et:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml ps
+```
