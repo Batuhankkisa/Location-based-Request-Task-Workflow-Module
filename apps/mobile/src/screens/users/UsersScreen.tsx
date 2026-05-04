@@ -199,19 +199,6 @@ export function UsersScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.headerGroup}>
-            <View style={styles.topLine}>
-              <Text style={styles.panelTitle}>Yonetim Paneli</Text>
-              <View style={styles.profileGroup}>
-                <View>
-                  <Text style={styles.profileTitle}>Admin Profil</Text>
-                  <Text style={styles.profileSubtitle}>Yonetici</Text>
-                </View>
-                <View style={styles.profileAvatar}>
-                  <Text style={styles.profileAvatarText}>A</Text>
-                </View>
-              </View>
-            </View>
-
             <View style={styles.titleRow}>
               <View style={styles.titleTextGroup}>
                 <Text style={styles.pageTitle}>Supervisor ve Staff Hesaplari</Text>
@@ -426,45 +413,6 @@ const styles = StyleSheet.create({
   headerGroup: {
     gap: 18,
     marginBottom: 2
-  },
-  topLine: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
-  },
-  panelTitle: {
-    color: COLORS.heading,
-    fontSize: 18,
-    fontWeight: '800'
-  },
-  profileGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
-  },
-  profileTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    textAlign: 'right'
-  },
-  profileSubtitle: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-    textAlign: 'right',
-    marginTop: 2
-  },
-  profileAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#c7d2e8'
-  },
-  profileAvatarText: {
-    color: COLORS.heading,
-    fontSize: 15,
-    fontWeight: '800'
   },
   titleRow: {
     flexDirection: 'row',

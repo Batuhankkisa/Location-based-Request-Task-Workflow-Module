@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { NavigationProp, ParamListBase, useNavigation } from '@react-navigation/native';
 import { Role } from '@lbrtw/shared';
-import type { AppTabParamList } from '../navigation/types';
+import type { AppStackParamList, AppTabParamList } from '../navigation/types';
 import { useAuthStore } from '../store/authStore';
 import { COLORS } from '../utils/constants';
 import { canManageOrganizations, canManageUsers, canSeeLocationsModule, canSeeQrModule } from '../utils/role';
@@ -20,13 +20,11 @@ export function MobileTopBar({ trailingInitial }: MobileTopBarProps) {
   const initial = trailingInitial ?? user?.fullName?.slice(0, 1).toUpperCase();
   const menuItems = useMemo(() => getMenuItems(role), [role]);
 
-  function navigateTo(routeName: keyof AppTabParamList) {
+  function navigateTo(routeName: keyof AppTabParamList | keyof AppStackParamList) {
     setMenuVisible(false);
 
     requestAnimationFrame(() => {
-      const parentNavigation = navigation.getParent<NavigationProp<ParamListBase>>();
-      const targetNavigation = parentNavigation ?? navigation;
-      targetNavigation.navigate(routeName);
+      getRootNavigation(navigation).navigate(routeName);
     });
   }
 
@@ -44,7 +42,7 @@ export function MobileTopBar({ trailingInitial }: MobileTopBarProps) {
       <Pressable
         accessibilityLabel="Profil"
         accessibilityRole="button"
-        onPress={() => navigateTo('ProfileTab')}
+        onPress={() => navigateTo('Profile')}
         style={({ pressed }) => [styles.avatar, pressed ? styles.pressed : null]}
       >
         {initial ? (
@@ -138,12 +136,6 @@ function getMenuItems(role: Role) {
           iconName: 'people-outline'
         }
       : null,
-    {
-      routeName: 'ProfileTab',
-      title: 'Profil',
-      meta: 'Hesap ve baglanti',
-      iconName: 'person-circle-outline'
-    }
   ].filter(
     (
       item
@@ -154,6 +146,18 @@ function getMenuItems(role: Role) {
       iconName: keyof typeof Ionicons.glyphMap;
     } => Boolean(item)
   );
+}
+
+function getRootNavigation(navigation: NavigationProp<ParamListBase>) {
+  let currentNavigation = navigation;
+  let parentNavigation = currentNavigation.getParent<NavigationProp<ParamListBase>>();
+
+  while (parentNavigation) {
+    currentNavigation = parentNavigation;
+    parentNavigation = currentNavigation.getParent<NavigationProp<ParamListBase>>();
+  }
+
+  return currentNavigation;
 }
 
 const styles = StyleSheet.create({

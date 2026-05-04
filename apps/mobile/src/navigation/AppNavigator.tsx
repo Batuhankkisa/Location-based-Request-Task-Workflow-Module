@@ -14,8 +14,9 @@ import { TaskDetailScreen } from '../screens/tasks/TaskDetailScreen';
 import { TaskListScreen } from '../screens/tasks/TaskListScreen';
 import { UsersScreen } from '../screens/users/UsersScreen';
 import { useAuthStore } from '../store/authStore';
-import type { AppTabParamList, QrsStackParamList, TasksStackParamList } from './types';
+import type { AppStackParamList, AppTabParamList, QrsStackParamList, TasksStackParamList } from './types';
 
+const AppStack = createNativeStackNavigator<AppStackParamList>();
 const Tab = createBottomTabNavigator<AppTabParamList>();
 const TasksStack = createNativeStackNavigator<TasksStackParamList>();
 const QrsStack = createNativeStackNavigator<QrsStackParamList>();
@@ -53,6 +54,22 @@ function QrsStackNavigator() {
 }
 
 export function AppNavigator() {
+  return (
+    <AppStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: {
+          backgroundColor: COLORS.background
+        }
+      }}
+    >
+      <AppStack.Screen name="AppTabs" component={AppTabsNavigator} />
+      <AppStack.Screen name="Profile" component={ProfileScreen} />
+    </AppStack.Navigator>
+  );
+}
+
+function AppTabsNavigator() {
   const role = useAuthStore((state) => state.user?.role ?? Role.STAFF);
 
   return (
@@ -125,13 +142,6 @@ export function AppNavigator() {
           }}
         />
       ) : null}
-      <Tab.Screen
-        name="ProfileTab"
-        component={ProfileScreen}
-        options={{
-          title: 'Profil'
-        }}
-      />
     </Tab.Navigator>
   );
 }
@@ -148,8 +158,6 @@ function getTabIconName(routeName: keyof AppTabParamList): keyof typeof Ionicons
       return 'business-outline';
     case 'UsersTab':
       return 'people-outline';
-    case 'ProfileTab':
-      return 'person-circle-outline';
     default:
       return 'ellipse-outline';
   }

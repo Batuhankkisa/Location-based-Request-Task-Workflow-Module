@@ -16,11 +16,15 @@ export type QrsStackParamList = {
   };
 };
 
+export type AppStackParamList = {
+  AppTabs: undefined;
+  Profile: undefined;
+};
+
 export type AppTabParamList = {
   TasksTab: undefined;
   QrsTab: undefined;
   LocationsTab: undefined;
   OrganizationsTab: undefined;
   UsersTab: undefined;
-  ProfileTab: undefined;
 };

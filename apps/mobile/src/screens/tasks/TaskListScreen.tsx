@@ -117,10 +117,10 @@ export function TaskListScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.statGrid}>
-              <StatCard icon="clipboard-outline" label="Toplam" value={String(summary.total)} />
+              <StatCard icon="clipboard-outline" label="Toplam" tone="violet" value={String(summary.total)} />
               <StatCard icon="sparkles-outline" label="Yeni" tone="blue" value={String(summary.newTasks)} />
-              <StatCard icon="time-outline" label="Devam Eden" value={String(summary.inProgress)} />
-              <StatCard icon="hourglass-outline" label="Onay Bekleyen" value={String(summary.waiting)} />
+              <StatCard icon="time-outline" label="Devam Eden" tone="amber" value={String(summary.inProgress)} />
+              <StatCard icon="hourglass-outline" label="Onay Bekleyen" tone="green" value={String(summary.waiting)} />
             </View>
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>

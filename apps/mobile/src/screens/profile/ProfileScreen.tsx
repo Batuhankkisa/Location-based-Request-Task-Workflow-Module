@@ -1,21 +1,36 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppButton } from '../../components/AppButton';
 import { InfoRow } from '../../components/InfoRow';
 import { ScreenContainer } from '../../components/ScreenContainer';
 import { useAuthStore } from '../../store/authStore';
-import { API_BASE_URL, COLORS, LAYOUT } from '../../utils/constants';
+import { COLORS } from '../../utils/constants';
 import { getRoleLabel } from '../../utils/role';
 
 export function ProfileScreen() {
+  const navigation = useNavigation();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
 
   return (
     <ScreenContainer scrollable contentContainerStyle={styles.content}>
+      <View style={styles.topBar}>
+        <Pressable
+          accessibilityLabel="Geri"
+          accessibilityRole="button"
+          onPress={() => navigation.goBack()}
+          style={({ pressed }) => [styles.backButton, pressed ? styles.pressed : null]}
+        >
+          <Ionicons name="chevron-back" size={22} color={COLORS.heading} />
+        </Pressable>
+        <Text style={styles.topBarTitle}>Profil</Text>
+        <View style={styles.backButtonPlaceholder} />
+      </View>
+
       <View style={styles.heroCard}>
         <Text style={styles.heroEyebrow}>Profil</Text>
         <Text style={styles.heroTitle}>{user?.fullName ?? 'Kullanici'}</Text>
-        <Text style={styles.heroSubtitle}>Mobil auth bootstrap SecureStore ile korunur.</Text>
       </View>
 
       <View style={styles.infoCard}>
@@ -26,14 +41,6 @@ export function ProfileScreen() {
         <InfoRow label="Durum" value={user?.isActive ? 'Aktif' : 'Pasif'} />
       </View>
 
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>API baglantisi</Text>
-        <Text style={styles.sectionText}>{API_BASE_URL}</Text>
-        <Text style={styles.sectionMuted}>
-          Fiziksel cihazda test icin backend URL&apos;sini local IP ile guncelle.
-        </Text>
-      </View>
-
       <AppButton label="Logout" onPress={() => void logout()} />
     </ScreenContainer>
   );
@@ -42,6 +49,29 @@ export function ProfileScreen() {
 const styles = StyleSheet.create({
   content: {
     gap: 14
+  },
+  topBar: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between'
+  },
+  backButton: {
+    width: 42,
+    height: 42,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 999,
+    backgroundColor: COLORS.surface
+  },
+  backButtonPlaceholder: {
+    width: 42,
+    height: 42
+  },
+  topBarTitle: {
+    color: COLORS.heading,
+    fontSize: 18,
+    fontWeight: '800'
   },
   heroCard: {
     backgroundColor: COLORS.heading,
@@ -60,11 +90,6 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '800'
   },
-  heroSubtitle: {
-    color: '#d4defa',
-    fontSize: 15,
-    lineHeight: 22
-  },
   infoCard: {
     backgroundColor: COLORS.surface,
     borderRadius: 24,
@@ -73,27 +98,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border
   },
-  sectionCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: 24,
-    padding: 18,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: COLORS.border
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.heading
-  },
-  sectionText: {
-    color: COLORS.heading,
-    fontSize: 16,
-    fontWeight: '700'
-  },
-  sectionMuted: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-    lineHeight: 21
+  pressed: {
+    opacity: 0.7
   }
 });

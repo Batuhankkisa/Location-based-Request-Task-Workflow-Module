@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { COLORS } from '../utils/constants';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
-type StatTone = 'blue' | 'green' | 'red' | 'neutral';
+type StatTone = 'amber' | 'blue' | 'green' | 'red' | 'violet' | 'neutral';
 
 interface StatCardProps {
   label: string;
@@ -19,9 +19,7 @@ export function StatCard({ label, value, icon, tone = 'neutral' }: StatCardProps
       <View style={[styles.iconWrap, toneStyles[tone]]}>
         <Ionicons name={icon} size={18} color={iconColors[tone]} />
       </View>
-      <Text style={[styles.label, tone === 'blue' ? styles.blueLabel : null, tone === 'red' ? styles.redLabel : null]}>
-        {label}
-      </Text>
+      <Text style={[styles.label, tone !== 'neutral' ? { color: iconColors[tone] } : null]}>{label}</Text>
       <Text style={styles.value}>{value}</Text>
     </View>
   );
@@ -57,12 +55,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase'
   },
-  blueLabel: {
-    color: '#005bd8'
-  },
-  redLabel: {
-    color: COLORS.danger
-  },
   value: {
     color: COLORS.heading,
     fontSize: 28,
@@ -71,6 +63,9 @@ const styles = StyleSheet.create({
 });
 
 const toneStyles = StyleSheet.create({
+  amber: {
+    backgroundColor: COLORS.warningSoft
+  },
   blue: {
     backgroundColor: '#dce8ff'
   },
@@ -80,14 +75,19 @@ const toneStyles = StyleSheet.create({
   red: {
     backgroundColor: COLORS.dangerSoft
   },
+  violet: {
+    backgroundColor: '#ede9fe'
+  },
   neutral: {
     backgroundColor: '#eef1f6'
   }
 });
 
 const iconColors: Record<StatTone, string> = {
+  amber: COLORS.warning,
   blue: '#0b63ce',
   green: COLORS.success,
   red: COLORS.danger,
+  violet: '#6d28d9',
   neutral: COLORS.heading
 };

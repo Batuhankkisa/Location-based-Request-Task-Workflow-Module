@@ -163,10 +163,10 @@ export function OrganizationsScreen() {
               </Pressable>
             </View>
             <View style={styles.summaryGrid}>
-              <StatCard icon="business-outline" label="Toplam Kurum" value={String(organizations.length)} />
-              <StatCard icon="shield-checkmark-outline" label="Aktif" value={`${summary.active} / ${organizations.length}`} />
-              <StatCard icon="people-outline" label="Kullanicilar" value={String(summary.users)} />
-              <StatCard icon="paper-plane-outline" label="Telegram" tone="green" value={`${organizations.filter((item) => item.telegramEnabled).length} aktif`} />
+              <StatCard icon="business-outline" label="Toplam Kurum" tone="violet" value={String(organizations.length)} />
+              <StatCard icon="shield-checkmark-outline" label="Aktif" tone="green" value={`${summary.active} / ${organizations.length}`} />
+              <StatCard icon="people-outline" label="Kullanicilar" tone="blue" value={String(summary.users)} />
+              <StatCard icon="paper-plane-outline" label="Telegram" tone="amber" value={`${organizations.filter((item) => item.telegramEnabled).length} aktif`} />
             </View>
             <SearchBar onChangeText={setSearchTerm} placeholder="Kurum veya kod ara..." value={searchTerm} />
             <Text style={styles.sectionTitle}>Tum Kurumlar</Text>
