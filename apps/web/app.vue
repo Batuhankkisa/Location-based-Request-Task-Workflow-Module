@@ -14,7 +14,6 @@ const canManageOrganizations = computed(() => auth.hasRole(Role.ADMIN));
 const canManageUsers = computed(() => auth.hasRole(Role.ADMIN));
 const adminSearchTerm = ref('');
 const adminSearchFocused = ref(false);
-const adminSearchInput = ref<HTMLInputElement | null>(null);
 
 const adminNavItems = computed(() =>
   [
@@ -80,28 +79,6 @@ const showAdminSearchMatches = computed(
   () => adminSearchFocused.value && adminSearchMatches.value.length > 0
 );
 
-const adminTopbarLinks = computed(() =>
-  [
-    canViewTasks.value
-      ? {
-          to: '/admin/tasks',
-          label: 'Bildirimler'
-        }
-      : null,
-    canManageOrganizations.value
-      ? {
-          to: '/admin/organizations',
-          label: 'Ayarlar'
-        }
-      : canViewQrAdmin.value
-        ? {
-            to: '/admin/qrs',
-            label: 'Ayarlar'
-          }
-        : null
-  ].filter((item): item is { to: string; label: string } => Boolean(item))
-);
-
 const pageMeta = computed(() => {
   if (route.path.startsWith('/admin/qrs')) {
     return {
@@ -121,6 +98,13 @@ const pageMeta = computed(() => {
     return {
       kicker: 'Kurumlar',
       title: 'Multi-Organization'
+    };
+  }
+
+  if (route.path.startsWith('/admin/profile')) {
+    return {
+      kicker: 'Hesap',
+      title: 'Profil'
     };
   }
 
@@ -180,11 +164,6 @@ async function navigateFromAdminSearch(item = adminSearchMatches.value[0]) {
   adminSearchFocused.value = false;
   await navigateTo(item.to);
 }
-
-function focusAdminSearch() {
-  adminSearchFocused.value = true;
-  adminSearchInput.value?.focus();
-}
 </script>
 
 <template>
@@ -220,14 +199,10 @@ function focusAdminSearch() {
         <div class="admin-sidebar-footer">
           <NuxtLink class="admin-ghost-link" to="/admin/tasks">Görev Akışı</NuxtLink>
           <NuxtLink v-if="canViewQrAdmin" class="admin-ghost-link" to="/admin/qrs">QR Linkleri</NuxtLink>
-
-          <div v-if="user" class="admin-user-card">
-            <div>
-              <strong>{{ user.fullName }}</strong>
-              <span>{{ user.organization?.name ?? 'Global Admin' }} · {{ user.role }}</span>
-            </div>
-            <button class="button small" type="button" @click="logout">Çıkış</button>
-          </div>
+          <NuxtLink v-if="user" class="admin-ghost-link" to="/admin/profile">Profil</NuxtLink>
+          <button v-if="user" class="admin-ghost-link admin-logout-link" type="button" @click="logout">
+            Çıkış Yap
+          </button>
         </div>
       </aside>
 
@@ -237,7 +212,6 @@ function focusAdminSearch() {
             <form class="admin-search-shell" role="search" @submit.prevent="navigateFromAdminSearch()">
               <span class="admin-search-icon" aria-hidden="true"></span>
               <input
-                ref="adminSearchInput"
                 v-model="adminSearchTerm"
                 type="search"
                 placeholder="Sayfalarda ara..."
@@ -263,18 +237,14 @@ function focusAdminSearch() {
 
           <div class="admin-topbar-meta">
             <NuxtLink
-              v-for="item in adminTopbarLinks"
-              :key="item.label"
-              class="admin-icon-button"
-              :to="item.to"
-              :aria-label="item.label"
-              :title="item.label"
-            />
-            <button class="admin-icon-button" type="button" aria-label="Kısayollar" title="Kısayollar" @click="focusAdminSearch"></button>
-
-            <div v-if="user" class="admin-topbar-user">
+              v-if="user"
+              class="admin-topbar-user"
+              to="/admin/profile"
+              aria-label="Profil"
+              title="Profil"
+            >
               <span class="admin-avatar">{{ user.fullName.slice(0, 1) }}</span>
-            </div>
+            </NuxtLink>
           </div>
         </header>
 
