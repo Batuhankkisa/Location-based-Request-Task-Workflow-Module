@@ -678,6 +678,7 @@ label {
 }
 
 .auth-card {
+  display: grid;
   gap: 36px;
 }
 
