@@ -175,6 +175,14 @@ function taskStatusTone(status: TaskStatus) {
   }
 }
 
+function requestChannelLabel(channel: string) {
+  const labels: Record<string, string> = {
+    QR_WEB: 'QR Web'
+  };
+
+  return labels[channel] ?? channel.replace(/_/g, ' ');
+}
+
 function parseRequestSummary(value: string) {
   const lines = value
     .split('\n')
@@ -328,7 +336,6 @@ watch(selectedOrganizationId, (organizationId) => {
               <td v-if="canSelectOrganization">
                 <div class="users-stack-cell">
                   <strong>{{ task.location.organization?.name ?? '-' }}</strong>
-                  <small>{{ task.location.organization?.code ?? 'Genel scope' }}</small>
                 </div>
               </td>
               <td>
@@ -345,7 +352,7 @@ watch(selectedOrganizationId, (organizationId) => {
                   <span class="tasks-category-pill">{{ parseRequestSummary(task.request.requestText).category }}</span>
                   <strong>{{ parseRequestSummary(task.request.requestText).title }}</strong>
                   <small>{{ parseRequestSummary(task.request.requestText).description }}</small>
-                  <code>{{ task.request.channel }}</code>
+                  <span class="tasks-source-pill">{{ requestChannelLabel(task.request.channel) }}</span>
                 </div>
               </td>
               <td>

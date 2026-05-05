@@ -678,7 +678,7 @@ label {
 }
 
 .auth-card {
-  gap: 28px;
+  gap: 36px;
 }
 
 .login-screen {
@@ -747,6 +747,11 @@ label {
 .auth-card form.section {
   gap: 16px;
   text-align: left;
+}
+
+.auth-card form.section > div:not(.login-action-row):not(.form-actions) {
+  display: grid;
+  gap: 8px;
 }
 
 .auth-card .button.primary {
@@ -3697,13 +3702,12 @@ th {
   min-width: 0;
 }
 
-.tasks-request-cell code {
+.tasks-source-pill {
   width: fit-content;
   border: 1px solid #d7deeb;
   border-radius: 999px;
   background: #f8fafc;
   color: #475569;
-  font-family: Consolas, "SFMono-Regular", monospace;
   font-size: 11px;
   font-weight: 800;
   line-height: 16px;
@@ -3723,21 +3727,21 @@ th {
 }
 
 .tasks-status-pill.tone-new {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #1d4ed8;
-}
-
-.tasks-status-pill.tone-progress {
   border-color: #fde68a;
   background: #fffbeb;
   color: #b45309;
 }
 
-.tasks-status-pill.tone-awaiting {
+.tasks-status-pill.tone-progress {
   border-color: #ddd6fe;
   background: #f5f3ff;
   color: #6d28d9;
+}
+
+.tasks-status-pill.tone-awaiting {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+  color: #15803d;
 }
 
 .tasks-status-pill.tone-approved {
