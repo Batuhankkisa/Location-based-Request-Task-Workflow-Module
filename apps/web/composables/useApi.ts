@@ -29,7 +29,7 @@ export function useApiFetch<T>(path: string, options: Parameters<typeof $fetch<T
   });
 }
 
-export function getApiErrorMessage(error: unknown, fallback = 'Bir hata olustu.') {
+export function getApiErrorMessage(error: unknown, fallback = 'Bir hata oluştu.') {
   const apiError = error as ApiErrorShape | undefined;
   const message = apiError?.data?.message ?? apiError?.message;
 

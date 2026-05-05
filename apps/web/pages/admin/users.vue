@@ -86,8 +86,8 @@ const { data, pending, error, refresh } = await useAsyncData(
 const users = computed(() => data.value?.data ?? []);
 const currentOrganizationLabel = computed(() =>
   selectedOrganizationId.value === 'ALL'
-    ? 'Tum kurumlar'
-    : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Secili kurum'
+    ? 'Tüm kurumlar'
+    : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Seçili kurum'
 );
 const filteredUsers = computed(() =>
   users.value.filter((user) => {
@@ -109,7 +109,7 @@ const filteredUsers = computed(() =>
 );
 const summaryCards = computed(() => [
   {
-    label: 'Toplam kullanici',
+    label: 'Toplam kullanıcı',
     value: users.value.length,
     detail: currentOrganizationLabel.value,
     tone: 'blue'
@@ -123,7 +123,7 @@ const summaryCards = computed(() => [
   {
     label: 'Supervisor',
     value: users.value.filter((user) => user.role === Role.SUPERVISOR).length,
-    detail: 'Onay ve ekip yonetimi',
+    detail: 'Onay ve ekip yönetimi',
     tone: 'violet'
   },
   {
@@ -232,12 +232,12 @@ async function submit() {
   pageMessage.value = '';
 
   if (form.role !== Role.ADMIN && !form.organizationId) {
-    formError.value = 'Supervisor ve staff kullanicilari bir kuruma baglamalisin.';
+    formError.value = 'Supervisor ve staff kullanıcılarını bir kuruma bağlamalısın.';
     return;
   }
 
   if (!isEditMode.value && !form.password.trim()) {
-    formError.value = 'Yeni kullanici icin sifre zorunlu.';
+    formError.value = 'Yeni kullanıcı için şifre zorunlu.';
     return;
   }
 
@@ -265,12 +265,12 @@ async function submit() {
     resetForm();
     isCreateModalOpen.value = false;
     editingUser.value = null;
-    pageMessage.value = wasEditMode ? 'Kullanici guncellendi.' : 'Kullanici olusturuldu.';
+    pageMessage.value = wasEditMode ? 'Kullanıcı güncellendi.' : 'Kullanıcı oluşturuldu.';
     await refresh();
   } catch (requestError) {
     formError.value = getApiErrorMessage(
       requestError,
-      isEditMode.value ? 'Kullanici guncellenemedi.' : 'Kullanici olusturulamadi.'
+      isEditMode.value ? 'Kullanıcı güncellenemedi.' : 'Kullanıcı oluşturulamadı.'
     );
   } finally {
     submitting.value = false;
@@ -300,20 +300,20 @@ function getInitials(value: string) {
     <header class="users-azure-header">
       <div class="users-title-block">
         <p class="eyebrow">Azure Directory</p>
-        <h1>Kullanici Yonetimi</h1>
-        <p>{{ currentOrganizationLabel }} kapsaminda roller, durumlar ve kurum baglantilari.</p>
+        <h1>Kullanıcı Yönetimi</h1>
+        <p>{{ currentOrganizationLabel }} kapsamında roller, durumlar ve kurum bağlantıları.</p>
       </div>
 
       <div class="users-header-actions">
         <button class="button primary users-create-button" type="button" @click="openCreateModal">
           <span class="users-plus-icon" aria-hidden="true"></span>
-          Yeni kullanici
+          Yeni kullanıcı
         </button>
 
         <label class="users-filter-card">
           <span>Kurum</span>
           <select v-model="selectedOrganizationId">
-            <option value="ALL">Tum kurumlar</option>
+            <option value="ALL">Tüm kurumlar</option>
             <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
               {{ organization.name }}
             </option>
@@ -342,14 +342,14 @@ function getInitials(value: string) {
       <div class="users-directory-toolbar">
         <label class="users-search-field">
           <span aria-hidden="true"></span>
-          <input v-model="searchTerm" type="text" placeholder="Kullanici, e-posta veya kurum ara" />
+          <input v-model="searchTerm" type="text" placeholder="Kullanıcı, e-posta veya kurum ara" />
         </label>
 
         <div class="users-toolbar-controls">
           <label class="users-filter-card compact">
             <span>Rol</span>
             <select v-model="roleFilter">
-              <option value="ALL">Tum roller</option>
+              <option value="ALL">Tüm roller</option>
               <option :value="Role.SUPERVISOR">SUPERVISOR</option>
               <option :value="Role.STAFF">STAFF</option>
               <option :value="Role.ADMIN">ADMIN</option>
@@ -359,7 +359,7 @@ function getInitials(value: string) {
           <label class="users-filter-card compact">
             <span>Durum</span>
             <select v-model="statusFilter">
-              <option value="ALL">Tum durumlar</option>
+              <option value="ALL">Tüm durumlar</option>
               <option value="ACTIVE">Aktif</option>
               <option value="PASSIVE">Pasif</option>
             </select>
@@ -369,29 +369,29 @@ function getInitials(value: string) {
 
       <div class="users-directory-head">
         <div>
-          <p class="eyebrow">Kullanicilar</p>
+          <p class="eyebrow">Kullanıcılar</p>
           <h2>Hesap listesi</h2>
         </div>
-        <span class="users-count-pill">{{ filteredUsers.length }} kayit</span>
+        <span class="users-count-pill">{{ filteredUsers.length }} kayıt</span>
       </div>
 
       <div v-if="pending" class="users-empty-state">
-        <p>Kullanicilar yukleniyor...</p>
+        <p>Kullanıcılar yükleniyor...</p>
       </div>
 
       <div v-else-if="error" class="users-empty-state error-panel">
-        <p>Kullanici listesi alinamadi.</p>
+        <p>Kullanıcı listesi alınamadı.</p>
       </div>
 
       <div v-else class="users-table-wrap">
         <table class="users-azure-table">
           <thead>
             <tr>
-              <th>Kullanici</th>
+              <th>Kullanıcı</th>
               <th>Rol</th>
               <th>Kurum</th>
               <th>Durum</th>
-              <th>Olusturulma</th>
+              <th>Oluşturulma</th>
               <th>Aksiyon</th>
             </tr>
           </thead>
@@ -423,12 +423,12 @@ function getInitials(value: string) {
               </td>
               <td>{{ formatDate(user.createdAt) }}</td>
               <td>
-                <button class="button small" type="button" @click="openEditModal(user)">Duzenle</button>
+                <button class="button small" type="button" @click="openEditModal(user)">Düzenle</button>
               </td>
             </tr>
 
             <tr v-if="filteredUsers.length === 0">
-              <td colspan="6">Secili filtrelerde kullanici yok.</td>
+              <td colspan="6">Seçili filtrelerde kullanıcı yok.</td>
             </tr>
           </tbody>
         </table>
@@ -439,8 +439,8 @@ function getInitials(value: string) {
       <section class="users-create-modal" role="dialog" aria-modal="true" aria-labelledby="createUserTitle">
         <header class="users-modal-header">
           <div>
-            <p class="eyebrow">{{ isEditMode ? 'Kullanici duzenle' : 'Yeni kullanici' }}</p>
-            <h2 id="createUserTitle">{{ isEditMode ? 'Hesabi guncelle' : 'Hesap olustur' }}</h2>
+            <p class="eyebrow">{{ isEditMode ? 'Kullanıcı düzenle' : 'Yeni kullanıcı' }}</p>
+            <h2 id="createUserTitle">{{ isEditMode ? 'Hesabı güncelle' : 'Hesap oluştur' }}</h2>
           </div>
           <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
         </header>
@@ -498,19 +498,19 @@ function getInitials(value: string) {
           </label>
 
           <label>
-            <span>Sifre</span>
+            <span>Şifre</span>
             <input
               id="userPassword"
               v-model="form.password"
               type="password"
               minlength="6"
-              :placeholder="isEditMode ? 'Degistirmeyeceksen bos birak' : 'Admin123!'"
+              :placeholder="isEditMode ? 'Değiştirmeyeceksen boş bırak' : 'Admin123!'"
               :required="!isEditMode"
             />
           </label>
 
           <p v-if="form.role !== Role.ADMIN && !form.organizationId" class="info-text">
-            Supervisor veya staff icin kurum secimi zorunlu.
+            Supervisor veya staff için kurum seçimi zorunlu.
           </p>
           <p v-if="formError" class="error-text">{{ formError }}</p>
           <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
@@ -518,7 +518,7 @@ function getInitials(value: string) {
           <div class="users-modal-actions">
             <button class="button small" type="button" :disabled="submitting" @click="closeCreateModal">Vazgec</button>
             <button class="button primary" type="submit" :disabled="submitting">
-              {{ submitting ? 'Kaydediliyor...' : isEditMode ? 'Guncelle' : 'Olustur' }}
+              {{ submitting ? 'Kaydediliyor...' : isEditMode ? 'Güncelle' : 'Oluştur' }}
             </button>
           </div>
         </form>

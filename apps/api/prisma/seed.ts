@@ -299,7 +299,7 @@ async function seedOrganization(organizationSeed: OrganizationSeed) {
       token: item.token,
       label: `${organizationSeed.name} - ${item.room} No'lu Oda`,
       locationId: room.id,
-      note: `${organizationSeed.name} demo QR kaydi`
+      note: `${organizationSeed.name} demo QR kaydı`
     });
 
     summary.push({

@@ -224,7 +224,7 @@ export function OrganizationsScreen() {
         <View style={styles.formSection}>
           <Text style={styles.formLabel}>Telegram</Text>
           <View style={styles.optionWrap}>
-            <OptionChip label="Kapali" onPress={() => setTelegramEnabled(false)} selected={!telegramEnabled} />
+            <OptionChip label="Kapalı" onPress={() => setTelegramEnabled(false)} selected={!telegramEnabled} />
             <OptionChip label="Açık" onPress={() => setTelegramEnabled(true)} selected={telegramEnabled} />
           </View>
         </View>

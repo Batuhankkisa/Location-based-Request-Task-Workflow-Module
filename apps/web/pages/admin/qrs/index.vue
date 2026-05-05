@@ -208,11 +208,11 @@ const canSubmitQr = computed(() => Boolean(activeOrganizationId.value) && locati
 const currentOrganizationLabel = computed(() => {
   if (canSelectOrganization.value) {
     return selectedOrganizationId.value === 'ALL'
-      ? 'Tum kurumlar'
-      : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Secili kurum';
+      ? 'Tüm kurumlar'
+      : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Seçili kurum';
   }
 
-  return auth.user.value?.organization?.name ?? 'Kurum tanimsiz';
+  return auth.user.value?.organization?.name ?? 'Kurum tanımsız';
 });
 
 const typeOptions = computed(() =>
@@ -433,8 +433,8 @@ async function submitQr() {
 
   if (!canSubmitQr.value) {
     formError.value = canSelectOrganization.value && !activeOrganizationId.value
-      ? 'Yeni QR icin once tek bir kurum sec.'
-      : 'QR baglamak icin uygun lokasyon bulunamadi.';
+      ? 'Yeni QR için önce tek bir kurum seç.'
+      : 'QR bağlamak için uygun lokasyon bulunamadı.';
     return;
   }
 
@@ -459,12 +459,12 @@ async function submitQr() {
     qrForm.imagePath = '';
     qrForm.note = '';
     isCreateModalOpen.value = false;
-    pageMessage.value = 'QR kaydi olusturuldu.';
+    pageMessage.value = 'QR kaydı oluşturuldu.';
     await Promise.all([refresh(), refreshLocationTree()]);
     selectedQrId.value = response.data.id;
     await refreshSelection();
   } catch (requestError) {
-    formError.value = getApiErrorMessage(requestError, 'QR kaydi olusturulamadi.');
+    formError.value = getApiErrorMessage(requestError, 'QR kaydı oluşturulamadı.');
   } finally {
     formSubmitting.value = false;
   }
@@ -484,11 +484,11 @@ async function setActiveState(action: 'activate' | 'deactivate') {
       method: 'PATCH'
     });
 
-    actionMessage.value = action === 'activate' ? 'QR tekrar aktif edildi.' : 'QR pasife alindi.';
+    actionMessage.value = action === 'activate' ? 'QR tekrar aktif edildi.' : 'QR pasife alındı.';
     await refresh();
     await refreshSelection();
   } catch (requestError) {
-    actionError.value = getApiErrorMessage(requestError, 'QR durumu guncellenemedi.');
+    actionError.value = getApiErrorMessage(requestError, 'QR durumu güncellenemedi.');
   } finally {
     actionLoading.value = '';
   }
@@ -507,7 +507,7 @@ async function copyPublicQrUrl() {
     await navigator.clipboard.writeText(publicQrUrl.value);
     copyMessage.value = 'Yonlendirme URL kopyalandi.';
   } catch {
-    copyMessage.value = 'Kopyalama basarisiz oldu.';
+    copyMessage.value = 'Kopyalama başarısız oldu.';
   }
 }
 
@@ -532,7 +532,7 @@ function assetUrl(value?: string | null) {
       <div class="users-title-block">
         <p class="eyebrow">QR Inventory</p>
         <h1>QR Envanteri</h1>
-        <p>{{ currentOrganizationLabel }} icindeki QR noktalarini, durumlarini ve scan gecmisini yonet.</p>
+        <p>{{ currentOrganizationLabel }} içindeki QR noktalarını, durumlarını ve okutma geçmişini yönet.</p>
       </div>
 
       <div class="users-header-actions">
@@ -556,7 +556,7 @@ function assetUrl(value?: string | null) {
         <label v-if="canSelectOrganization" class="inventory-select-card">
           <span>Kurum</span>
           <select v-model="selectedOrganizationId">
-            <option value="ALL">Tum kurumlar</option>
+            <option value="ALL">Tüm kurumlar</option>
             <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
               {{ organization.name }}
             </option>
@@ -566,7 +566,7 @@ function assetUrl(value?: string | null) {
         <label class="inventory-select-card">
           <span>Kat</span>
           <select v-model="floorFilter">
-            <option value="ALL">Tumu</option>
+            <option value="ALL">Tümü</option>
             <option v-for="floor in floorOptions" :key="floor" :value="floor">{{ floor }}</option>
           </select>
         </label>
@@ -574,7 +574,7 @@ function assetUrl(value?: string | null) {
         <label class="inventory-select-card">
           <span>Durum</span>
           <select v-model="statusFilter">
-            <option value="ALL">Tum durumlar</option>
+            <option value="ALL">Tüm durumlar</option>
             <option value="ACTIVE">Aktif</option>
             <option value="INACTIVE">Pasif</option>
           </select>
@@ -583,13 +583,13 @@ function assetUrl(value?: string | null) {
         <label class="inventory-select-card">
           <span>Tur</span>
           <select v-model="typeFilter">
-            <option value="ALL">Tum tipler</option>
+            <option value="ALL">Tüm tipler</option>
             <option v-for="type in typeOptions" :key="type" :value="type">{{ type }}</option>
           </select>
         </label>
 
         <label class="inventory-select-card">
-          <span>Secili kayit</span>
+          <span>Seçili kayıt</span>
           <select v-model="selectedQrId">
             <option v-for="qr in filteredQrCodes" :key="qr.id" :value="qr.id">{{ qr.label }}</option>
           </select>
@@ -601,39 +601,39 @@ function assetUrl(value?: string | null) {
       <article class="inventory-stat-card users-stat-card tone-blue">
         <span>Toplam QR</span>
         <strong>{{ stats.total }}</strong>
-        <small>Aktif ve pasif tum kayitlar</small>
+        <small>Aktif ve pasif tüm kayıtlar</small>
       </article>
       <article class="inventory-stat-card users-stat-card tone-green">
         <span>Aktif</span>
         <strong>{{ stats.active }}</strong>
-        <small>Talep akisi acik noktalar</small>
+        <small>Talep akışı açık noktalar</small>
       </article>
       <article class="inventory-stat-card users-stat-card tone-violet">
         <span>Pasif</span>
         <strong>{{ stats.inactive }}</strong>
-        <small>Revizyon veya kapali kayitlar</small>
+        <small>Revizyon veya kapalı kayıtlar</small>
       </article>
       <article class="inventory-stat-card users-stat-card tone-amber">
         <span>Toplam okutma</span>
         <strong>{{ stats.scans }}</strong>
-        <small>Kayitli scan log toplami</small>
+        <small>Kayıtlı okutma kaydı toplamı</small>
       </article>
     </div>
 
     <div v-if="pending" class="inventory-empty-state panel">
-      <p>QR envanteri yukleniyor...</p>
+      <p>QR envanteri yükleniyor...</p>
     </div>
 
     <div v-else-if="error" class="inventory-empty-state panel error-panel">
-      <p>QR kodlari alinamadi.</p>
+      <p>QR kodları alınamadı.</p>
     </div>
 
     <div v-else class="inventory-layout">
       <section class="inventory-table-card">
         <div class="inventory-table-head">
           <div>
-            <h2>QR Kayitlari</h2>
-            <p>{{ filteredQrCodes.length }} kayit listeleniyor</p>
+            <h2>QR Kayıtları</h2>
+            <p>{{ filteredQrCodes.length }} kayıt listeleniyor</p>
           </div>
           <NuxtLink
             v-if="selectedQrId"
@@ -653,7 +653,7 @@ function assetUrl(value?: string | null) {
                 <th>Tur</th>
                 <th>Durum</th>
                 <th>Okutma</th>
-                <th>Son islem</th>
+                <th>Son işlem</th>
               </tr>
             </thead>
             <tbody>
@@ -691,7 +691,7 @@ function assetUrl(value?: string | null) {
               <tr v-if="filteredQrCodes.length === 0">
                 <td colspan="6">
                   <div class="inventory-empty-state">
-                    <p>Filtrelere uyan QR kaydi yok.</p>
+                    <p>Filtrelere uyan QR kaydı yok.</p>
                   </div>
                 </td>
               </tr>
@@ -703,14 +703,14 @@ function assetUrl(value?: string | null) {
       <aside class="inventory-side-panel">
         <div class="inventory-panel-header">
           <div>
-            <p class="eyebrow">Secili QR</p>
+            <p class="eyebrow">Seçili QR</p>
             <h2>Detay paneli</h2>
           </div>
           <button class="button small" type="button" @click="refreshSelection">Yenile</button>
         </div>
 
         <div v-if="!selectedSummary" class="inventory-empty-state">
-          <p>Soldaki listeden bir QR kaydi sec.</p>
+          <p>Soldaki listeden bir QR kaydı seç.</p>
         </div>
 
         <template v-else>
@@ -731,11 +731,11 @@ function assetUrl(value?: string | null) {
           </section>
 
           <div v-if="qrDetailPending" class="inventory-note">
-            <p>Secili kayit detaylari yukleniyor...</p>
+            <p>Seçili kayıt detayları yükleniyor...</p>
           </div>
 
           <div v-else-if="qrDetailError" class="inventory-note error-panel">
-            <p>Secili QR detayi alinamadi.</p>
+            <p>Seçili QR detayı alınamadı.</p>
           </div>
 
           <template v-else>
@@ -772,29 +772,29 @@ function assetUrl(value?: string | null) {
             </section>
 
             <section class="inventory-meta-card">
-              <span>Son islemler</span>
+              <span>Son işlemler</span>
               <div v-if="scanLogsPending" class="inventory-note">
-                <p>Scan loglar yukleniyor...</p>
+                <p>Okutma kayıtları yükleniyor...</p>
               </div>
               <div v-else-if="scanLogsError" class="inventory-note error-panel">
-                <p>Log bilgisi alinamadi.</p>
+                <p>Log bilgisi alınamadı.</p>
               </div>
               <div v-else class="inventory-activity-list">
                 <article v-for="log in recentLogs" :key="log.id" class="inventory-activity-item">
                   <strong>{{ log.status }}</strong>
                   <span>{{ formatDate(log.scannedAt) }}</span>
-                  <p>{{ log.requestId ? `Request: ${log.requestId}` : 'Istek olusturulmamis.' }}</p>
+                  <p>{{ log.requestId ? `Request: ${log.requestId}` : 'İstek oluşturulmamış.' }}</p>
                 </article>
                 <article v-if="recentLogs.length === 0" class="inventory-activity-item">
                   <strong>Henuz log yok</strong>
-                  <p>Bu QR icin okutulma gecmisi kaydedilmemis.</p>
+                  <p>Bu QR için okutulma geçmişi kaydedilmemiş.</p>
                 </article>
               </div>
             </section>
 
             <section class="inventory-action-stack">
               <div class="inventory-action-row">
-                <a class="button" :href="publicQrUrl" target="_blank" rel="noreferrer">QR onizleme</a>
+                <a class="button" :href="publicQrUrl" target="_blank" rel="noreferrer">QR önizleme</a>
                 <NuxtLink class="button" :to="`/admin/qrs/${selectedSummary.id}`">Tam detay</NuxtLink>
               </div>
 
@@ -830,7 +830,7 @@ function assetUrl(value?: string | null) {
         <header class="users-modal-header">
           <div>
             <p class="eyebrow">Yeni QR</p>
-            <h2 id="createQrTitle">QR kaydi olustur</h2>
+            <h2 id="createQrTitle">QR kaydı oluştur</h2>
           </div>
           <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
         </header>
@@ -839,7 +839,7 @@ function assetUrl(value?: string | null) {
           <label>
             <span>Lokasyon</span>
             <select id="qrLocation" v-model="qrForm.locationId" :disabled="!canSubmitQr || locationTreePending">
-              <option v-if="!locationOptions.length" value="">Secilebilir lokasyon yok</option>
+              <option v-if="!locationOptions.length" value="">Seçilebilir lokasyon yok</option>
               <option v-for="location in locationOptions" :key="location.id" :value="location.id">
                 {{ location.label }}
               </option>
@@ -902,18 +902,18 @@ function assetUrl(value?: string | null) {
               id="qrNote"
               v-model="qrForm.note"
               maxlength="1000"
-              placeholder="Opsiyonel aciklama"
+              placeholder="Opsiyonel açıklama"
               :disabled="!canSubmitQr"
             />
           </label>
 
           <p v-if="canSelectOrganization && !activeOrganizationId" class="info-text">
-            QR olusturmak icin once tek bir kurum sec.
+            QR oluşturmak için önce tek bir kurum seç.
           </p>
-          <p v-else-if="locationTreePending" class="info-text">Lokasyon secenekleri yukleniyor...</p>
-          <p v-else-if="locationTreeError" class="error-text">Lokasyon listesi alinamadi.</p>
+          <p v-else-if="locationTreePending" class="info-text">Lokasyon seçenekleri yükleniyor...</p>
+          <p v-else-if="locationTreeError" class="error-text">Lokasyon listesi alınamadı.</p>
           <p v-else-if="!locationOptions.length" class="info-text">
-            Once bu kurum icin lokasyon ekle, sonra QR bagla.
+            Önce bu kurum için lokasyon ekle, sonra QR bağla.
           </p>
           <p v-if="formError" class="error-text">{{ formError }}</p>
           <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
@@ -926,7 +926,7 @@ function assetUrl(value?: string | null) {
               Vazgec
             </button>
             <button class="button primary" type="submit" :disabled="formSubmitting || !canSubmitQr">
-              {{ formSubmitting ? 'Olusturuluyor...' : 'Olustur' }}
+              {{ formSubmitting ? 'Oluşturuluyor...' : 'Oluştur' }}
             </button>
           </div>
         </form>

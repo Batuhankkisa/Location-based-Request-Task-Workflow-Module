@@ -179,8 +179,8 @@ async function submitLocation() {
 
   if (!canSubmitLocation.value) {
     formError.value = canSelectOrganization.value && !activeOrganizationId.value
-      ? 'Yeni lokasyon icin once tek bir kurum sec.'
-      : 'Yeni lokasyon icin uygun parent bulunamadi.';
+      ? 'Yeni lokasyon için önce tek bir kurum seç.'
+      : 'Yeni lokasyon için uygun parent bulunamadı.';
     return;
   }
 
@@ -204,7 +204,7 @@ async function submitLocation() {
     formMessage.value = 'Lokasyon eklendi.';
     await refresh();
   } catch (requestError) {
-    formError.value = getApiErrorMessage(requestError, 'Lokasyon olusturulamadi.');
+    formError.value = getApiErrorMessage(requestError, 'Lokasyon oluşturulamadı.');
   } finally {
     formSubmitting.value = false;
   }
@@ -280,7 +280,7 @@ function filterLocationTree(nodes: LocationNode[], rawSearchTerm: string): Locat
         <label v-if="canSelectOrganization">
           <span>Kurum</span>
           <select v-model="selectedOrganizationId">
-            <option value="ALL">Tum kurumlar</option>
+            <option value="ALL">Tüm kurumlar</option>
             <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
               {{ organization.name }}
             </option>
@@ -298,7 +298,7 @@ function filterLocationTree(nodes: LocationNode[], rawSearchTerm: string): Locat
           <div>
             <label for="locationParent">Üst Lokasyon</label>
             <select id="locationParent" v-model="form.parentId" :disabled="!canSubmitLocation || pending">
-              <option v-if="!parentOptions.length" value="">Secilebilir parent yok</option>
+              <option v-if="!parentOptions.length" value="">Seçilebilir parent yok</option>
               <option v-for="option in parentOptions" :key="option.id" :value="option.id">
                 {{ option.label }}
               </option>
@@ -350,11 +350,11 @@ function filterLocationTree(nodes: LocationNode[], rawSearchTerm: string): Locat
           </div>
 
           <p v-if="canSelectOrganization && !activeOrganizationId" class="info-text">
-            Olusturma formunu acmak icin once tek bir kurum sec.
+            Oluşturma formunu açmak için önce tek bir kurum seç.
           </p>
-          <p v-else-if="pending" class="info-text">Parent secenekleri yukleniyor...</p>
+          <p v-else-if="pending" class="info-text">Parent seçenekleri yükleniyor...</p>
           <p v-else-if="!parentOptions.length" class="info-text">
-            Bu kurum icin parent lokasyon bulunamadi.
+            Bu kurum için parent lokasyon bulunamadı.
           </p>
           <p v-if="formError" class="error-text">{{ formError }}</p>
           <p v-if="formMessage" class="success-text">{{ formMessage }}</p>
@@ -377,11 +377,11 @@ function filterLocationTree(nodes: LocationNode[], rawSearchTerm: string): Locat
         </div>
 
         <div v-if="pending" class="tree-state">
-          <p>Lokasyonlar yukleniyor...</p>
+          <p>Lokasyonlar yükleniyor...</p>
         </div>
 
         <div v-else-if="error" class="tree-state error-panel">
-          <p>Lokasyon agaci alinamadi.</p>
+          <p>Lokasyon ağacı alınamadı.</p>
         </div>
 
         <LocationTree v-else-if="filteredLocations.length" :nodes="filteredLocations" />

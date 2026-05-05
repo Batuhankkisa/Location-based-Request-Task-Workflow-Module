@@ -96,15 +96,15 @@ const filteredTasks = computed(() =>
 const currentOrganizationLabel = computed(() => {
   if (canSelectOrganization.value) {
     return selectedOrganizationId.value === 'ALL'
-      ? 'Tum kurumlar'
-      : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Secili kurum';
+      ? 'Tüm kurumlar'
+      : organizationOptions.value.find((item) => item.id === selectedOrganizationId.value)?.name ?? 'Seçili kurum';
   }
 
-  return auth.user.value?.organization?.name ?? 'Kurum tanimsiz';
+  return auth.user.value?.organization?.name ?? 'Kurum tanımsız';
 });
 const summaryCards = computed(() => [
   {
-    label: 'Toplam gorev',
+    label: 'Toplam görev',
     value: tasks.value.length,
     detail: currentOrganizationLabel.value,
     tone: 'blue'
@@ -116,7 +116,7 @@ const summaryCards = computed(() => [
     tone: 'amber'
   },
   {
-    label: 'Islemde',
+    label: 'İşlemde',
     value: tasks.value.filter((task) => task.status === TaskStatus.IN_PROGRESS).length,
     detail: 'Sahada devam ediyor',
     tone: 'violet'
@@ -146,7 +146,7 @@ function taskStatusLabel(status: TaskStatus) {
     case TaskStatus.NEW:
       return 'Yeni';
     case TaskStatus.IN_PROGRESS:
-      return 'Islemde';
+      return 'İşlemde';
     case TaskStatus.DONE_WAITING_APPROVAL:
       return 'Onay bekliyor';
     case TaskStatus.APPROVED:
@@ -187,8 +187,8 @@ function parseRequestSummary(value: string) {
       .trim();
   };
   const category = readField('Kategori') ?? 'Genel Talep';
-  const title = readField('Baslik') ?? lines[0] ?? 'Baslik yok';
-  const description = readField('Aciklama') ?? lines.find((line) => !line.includes(':')) ?? value;
+  const title = readField('Başlık') ?? readField('Baslik') ?? lines[0] ?? 'Başlık yok';
+  const description = readField('Açıklama') ?? readField('Aciklama') ?? lines.find((line) => !line.includes(':')) ?? value;
 
   return {
     category,
@@ -242,15 +242,15 @@ watch(selectedOrganizationId, (organizationId) => {
     <header class="users-azure-header tasks-azure-header">
       <div class="users-title-block">
         <p class="eyebrow">Request Center</p>
-        <h1>Gorev Listesi</h1>
-        <p>{{ currentOrganizationLabel }} icindeki talep kaynakli gorev akislarini izle ve kayit detayina in.</p>
+        <h1>Görev Listesi</h1>
+        <p>{{ currentOrganizationLabel }} içindeki talep kaynaklı görev akışlarını izle ve kayıt detayına in.</p>
       </div>
 
       <div class="users-header-actions">
         <label v-if="canSelectOrganization" class="users-filter-card">
           <span>Kurum</span>
           <select v-model="selectedOrganizationId">
-            <option value="ALL">Tum kurumlar</option>
+            <option value="ALL">Tüm kurumlar</option>
             <option v-for="organization in organizationOptions" :key="organization.id" :value="organization.id">
               {{ organization.name }}
             </option>
@@ -284,9 +284,9 @@ watch(selectedOrganizationId, (organizationId) => {
           <label class="users-filter-card compact">
             <span>Durum</span>
             <select v-model="statusFilter">
-              <option value="ALL">Tum durumlar</option>
+              <option value="ALL">Tüm durumlar</option>
               <option :value="TaskStatus.NEW">Yeni</option>
-              <option :value="TaskStatus.IN_PROGRESS">Islemde</option>
+              <option :value="TaskStatus.IN_PROGRESS">İşlemde</option>
               <option :value="TaskStatus.DONE_WAITING_APPROVAL">Onay bekliyor</option>
               <option :value="TaskStatus.APPROVED">Onaylandi</option>
               <option :value="TaskStatus.REJECTED">Reddedildi</option>
@@ -298,17 +298,17 @@ watch(selectedOrganizationId, (organizationId) => {
       <div class="users-directory-head">
         <div>
           <p class="eyebrow">Canli liste</p>
-          <h2>Talep gorevleri</h2>
+          <h2>Talep görevleri</h2>
         </div>
-        <span class="users-count-pill">{{ filteredTasks.length }} kayit</span>
+        <span class="users-count-pill">{{ filteredTasks.length }} kayıt</span>
       </div>
 
       <div v-if="pending" class="users-empty-state">
-        <p>Tasklar yukleniyor...</p>
+        <p>Görevler yükleniyor...</p>
       </div>
 
       <div v-else-if="error" class="users-empty-state error-panel">
-        <p>Tasklar alinamadi.</p>
+        <p>Görevler alınamadı.</p>
       </div>
 
       <div v-else class="users-table-wrap">
@@ -319,7 +319,7 @@ watch(selectedOrganizationId, (organizationId) => {
               <th>Lokasyon</th>
               <th>Talep</th>
               <th>Durum</th>
-              <th>Olusturulma</th>
+              <th>Oluşturulma</th>
               <th>Aksiyon</th>
             </tr>
           </thead>
@@ -365,7 +365,7 @@ watch(selectedOrganizationId, (organizationId) => {
               </td>
             </tr>
             <tr v-if="filteredTasks.length === 0">
-              <td :colspan="canSelectOrganization ? 6 : 5">Secili filtrelerde gorev yok.</td>
+              <td :colspan="canSelectOrganization ? 6 : 5">Seçili filtrelerde görev yok.</td>
             </tr>
           </tbody>
         </table>

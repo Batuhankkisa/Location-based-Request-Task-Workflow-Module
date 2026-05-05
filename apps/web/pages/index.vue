@@ -1,9 +1,9 @@
 <template>
   <section class="section narrow">
     <p class="eyebrow">MVP demo</p>
-    <h1>Lokasyon bazli talep ve task akisi</h1>
+    <h1>Lokasyon bazlı talep ve görev akışı</h1>
     <p class="lead">
-      Public QR akisi acik kalir. Personel ve admin ekranlari ise JWT ile korunur.
+      Public QR akışı açık kalır. Personel ve admin ekranları ise JWT ile korunur.
     </p>
 
     <div class="quick-actions">

@@ -197,9 +197,6 @@ async function navigateFromAdminSearch(item = adminSearchMatches.value[0]) {
         </nav>
 
         <div class="admin-sidebar-footer">
-          <NuxtLink class="admin-ghost-link" to="/admin/tasks">Görev Akışı</NuxtLink>
-          <NuxtLink v-if="canViewQrAdmin" class="admin-ghost-link" to="/admin/qrs">QR Linkleri</NuxtLink>
-          <NuxtLink v-if="user" class="admin-ghost-link" to="/admin/profile">Profil</NuxtLink>
           <button v-if="user" class="admin-ghost-link admin-logout-link" type="button" @click="logout">
             Çıkış Yap
           </button>

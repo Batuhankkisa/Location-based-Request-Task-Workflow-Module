@@ -36,7 +36,7 @@ export function useQrPreviewDataUrl(source: QrPreviewSource) {
         }
       } catch {
         if (currentGenerationId === generationId) {
-          error.value = 'QR onizlemesi uretilemedi.';
+          error.value = 'QR önizlemesi üretilemedi.';
         }
       }
     },

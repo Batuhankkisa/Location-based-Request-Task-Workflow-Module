@@ -101,7 +101,7 @@ const availableActions = computed<ActionCard[]>(() => {
     return [
       {
         id: 'start',
-        label: 'Goreve Basla',
+        label: 'Göreve Başla',
         helper: 'Talebi uzerine al',
         tone: 'navy'
       }
@@ -113,7 +113,7 @@ const availableActions = computed<ActionCard[]>(() => {
       {
         id: 'complete',
         label: 'Is Bitti',
-        helper: 'Gorevi onaya gonder',
+        helper: 'Görevi onaya gönder',
         tone: 'success'
       }
     ];
@@ -124,13 +124,13 @@ const availableActions = computed<ActionCard[]>(() => {
       {
         id: 'approve',
         label: 'Onayla',
-        helper: 'Gorevi kapat',
+        helper: 'Görevi kapat',
         tone: 'success'
       },
       {
         id: 'reject',
         label: 'Reddet',
-        helper: 'Revizyona gonder',
+        helper: 'Revizyona gönder',
         tone: 'danger'
       }
     ];
@@ -165,13 +165,13 @@ function parseStructuredRequest(value: string) {
       continue;
     }
 
-    if (line.startsWith('Baslik:')) {
-      title = line.replace('Baslik:', '').trim() || title;
+    if (line.startsWith('Başlık:') || line.startsWith('Baslik:')) {
+      title = line.replace(/^Başlık:|^Baslik:/, '').trim() || title;
       continue;
     }
 
-    if (line.startsWith('Aciklama:')) {
-      descriptionLines.push(line.replace('Aciklama:', '').trim());
+    if (line.startsWith('Açıklama:') || line.startsWith('Aciklama:')) {
+      descriptionLines.push(line.replace(/^Açıklama:|^Aciklama:/, '').trim());
       continue;
     }
 
@@ -189,37 +189,37 @@ function getStatusMeta(status?: TaskStatus) {
   switch (status) {
     case TaskStatus.NEW:
       return {
-        kicker: 'Acik Gorev',
+        kicker: 'Açık Görev',
         label: 'Yeni task hazir',
-        helper: 'Talep siraya alindi'
+        helper: 'Talep sıraya alındı'
       };
     case TaskStatus.IN_PROGRESS:
       return {
         kicker: 'Sahada',
-        label: 'Islem devam ediyor',
-        helper: 'Gorev aktif sekilde suruyor'
+        label: 'İşlem devam ediyor',
+        helper: 'Görev aktif şekilde sürüyor'
       };
     case TaskStatus.DONE_WAITING_APPROVAL:
       return {
         kicker: 'Onay Bekliyor',
-        label: 'Yonetici aksiyonu gerekli',
+        label: 'Yönetici aksiyonu gerekli',
         helper: 'Supervisor veya admin onayi bekleniyor'
       };
     case TaskStatus.APPROVED:
       return {
         kicker: 'Kapandi',
-        label: 'Gorev onaylandi',
+        label: 'Görev onaylandı',
         helper: 'Akis tamamlandi'
       };
     case TaskStatus.REJECTED:
       return {
         kicker: 'Revizyon',
-        label: 'Gorev reddedildi',
+        label: 'Görev reddedildi',
         helper: 'Not ile tekrar ele alinmali'
       };
     default:
       return {
-        kicker: 'Gorev',
+        kicker: 'Görev',
         label: 'Durum okunamadi',
         helper: 'Aksiyon bilgisi bekleniyor'
       };
@@ -232,7 +232,7 @@ function focusNote() {
 
 async function submitSelectedAction() {
   if (!selectedAction.value) {
-    actionError.value = 'Bu durum icin gonderilecek bir aksiyon yok.';
+    actionError.value = 'Bu durum için gönderilecek bir aksiyon yok.';
     return;
   }
 
@@ -252,11 +252,11 @@ async function runAction(action: TaskActionId) {
       }
     });
 
-    actionMessage.value = 'Gorev durumu guncellendi.';
+    actionMessage.value = 'Görev durumu güncellendi.';
     note.value = '';
     await refresh();
   } catch (requestError) {
-    actionError.value = getApiErrorMessage(requestError, 'Gorev guncellenemedi.');
+    actionError.value = getApiErrorMessage(requestError, 'Görev güncellenemedi.');
   } finally {
     actionLoading.value = '';
   }
@@ -298,18 +298,18 @@ function formatDate(value?: string | null) {
         </div>
 
         <div>
-          <h1>Gorevi Guncelle</h1>
+          <h1>Görevi Güncelle</h1>
           <p>{{ statusMeta.helper }}</p>
         </div>
       </header>
 
       <div v-if="pending" class="mobile-card mobile-state-card">
-        <p>Gorev detayi yukleniyor...</p>
+        <p>Görev detayı yükleniyor...</p>
       </div>
 
       <div v-else-if="error" class="mobile-card error-panel mobile-state-card">
-        <h2>Gorev bulunamadi</h2>
-        <p>Istenen gorev kaydi acilamadi.</p>
+        <h2>Görev bulunamadı</h2>
+        <p>İstenen görev kaydı açılamadı.</p>
       </div>
 
       <div v-else-if="task" class="task-update-layout">
@@ -343,8 +343,8 @@ function formatDate(value?: string | null) {
 
           <section class="mobile-card task-history-card">
             <div class="section-heading">
-              <p class="eyebrow">Gecmis</p>
-              <h2>Status akisi</h2>
+              <p class="eyebrow">Geçmiş</p>
+              <h2>Durum akışı</h2>
             </div>
 
             <div class="task-history-list">
@@ -360,8 +360,8 @@ function formatDate(value?: string | null) {
         <div class="task-main-stack">
           <section class="mobile-card task-action-zone">
             <div class="section-heading">
-              <p class="eyebrow">Aksiyon Secin</p>
-              <h2>Gorev durumu</h2>
+              <p class="eyebrow">Aksiyon Seçin</p>
+              <h2>Görev durumu</h2>
             </div>
 
             <div class="task-action-grid">
@@ -382,19 +382,19 @@ function formatDate(value?: string | null) {
 
               <button type="button" class="task-action-card tone-note" @click="focusNote">
                 <strong>Not Ekle</strong>
-                <span>Aciklama ya da revizyon notu yaz</span>
+                <span>Açıklama ya da revizyon notu yaz</span>
               </button>
             </div>
           </section>
 
           <section class="mobile-card task-note-card">
-            <label for="note">Not / Aciklama</label>
+            <label for="note">Not / Açıklama</label>
             <textarea
               id="note"
               ref="noteInput"
               v-model="note"
               rows="5"
-              placeholder="Yapilan islem, eksik malzeme veya ek aciklama..."
+              placeholder="Yapılan işlem, eksik malzeme veya ek açıklama..."
             />
           </section>
 
@@ -420,9 +420,9 @@ function formatDate(value?: string | null) {
                 rel="noreferrer"
                 class="request-photo-card request-photo-link"
               >
-                <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotografi'" />
+                <img :src="mediaUrl(image.fileUrl)" :alt="image.originalName ?? 'Talep fotoğrafı'" />
                 <div>
-                  <strong>{{ image.originalName ?? 'Talep fotografi' }}</strong>
+                  <strong>{{ image.originalName ?? 'Talep fotoğrafı' }}</strong>
                   <span>{{ formatDate(image.createdAt) }}</span>
                 </div>
               </a>
@@ -436,7 +436,7 @@ function formatDate(value?: string | null) {
               :disabled="!selectedAction || Boolean(actionLoading)"
               @click="submitSelectedAction"
             >
-              {{ actionLoading ? 'Durum gonderiliyor...' : 'Durumu Gonder' }}
+              {{ actionLoading ? 'Durum gönderiliyor...' : 'Durumu Gönder' }}
             </button>
 
             <p v-if="actionError" class="error-text">{{ actionError }}</p>

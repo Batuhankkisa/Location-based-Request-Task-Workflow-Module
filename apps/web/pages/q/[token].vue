@@ -58,7 +58,7 @@ type RequestCategory = {
 };
 
 const REQUEST_CATEGORIES: RequestCategory[] = [
-  { id: 'HOUSEKEEPING', label: 'Housekeeping', helper: 'Oda duzeni ve havlu' },
+  { id: 'HOUSEKEEPING', label: 'Housekeeping', helper: 'Oda düzeni ve havlu' },
   { id: 'TECHNICAL', label: 'Teknik Servis', helper: 'Ariza ve ekipman' },
   { id: 'SERVICE', label: 'Ikram', helper: 'Yiyecek ve icecek' },
   { id: 'CLEANING', label: 'Temizlik', helper: 'Hizli destek talebi' }
@@ -114,11 +114,11 @@ const composedRequestText = computed(() => {
   const parts = [`Kategori: ${selectedCategory.value.label}`];
 
   if (requestTitle.value.trim()) {
-    parts.push(`Baslik: ${requestTitle.value.trim()}`);
+    parts.push(`Başlık: ${requestTitle.value.trim()}`);
   }
 
   if (requestDescription.value.trim()) {
-    parts.push(`Aciklama: ${requestDescription.value.trim()}`);
+    parts.push(`Açıklama: ${requestDescription.value.trim()}`);
   }
 
   return parts.join('\n');
@@ -128,7 +128,7 @@ watch(
   () => data.value?.data.location.name,
   (name) => {
     if (name && !requestTitle.value.trim()) {
-      requestTitle.value = `${name} icin destek talebi`;
+      requestTitle.value = `${name} için destek talebi`;
     }
   },
   { immediate: true }
@@ -150,7 +150,7 @@ async function submitRequest() {
   successMessage.value = '';
 
   if (!canSubmit.value) {
-    submitError.value = 'Talep ozeti, ses kaydi veya fotograf eklemelisin.';
+    submitError.value = 'Talep özeti, ses kaydı veya fotoğraf eklemelisin.';
     return;
   }
 
@@ -182,14 +182,14 @@ async function submitRequest() {
       body
     });
 
-    successMessage.value = `Talebin iletildi. Gorev no: ${response.taskId}`;
+    successMessage.value = `Talebin iletildi. Görev no: ${response.taskId}`;
     requestDescription.value = '';
     transcriptText.value = '';
     liveTranscript.value = '';
     clearSelectedImages();
     clearAudio();
   } catch (err) {
-    submitError.value = getApiErrorMessage(err, 'Talep gonderilemedi.');
+    submitError.value = getApiErrorMessage(err, 'Talep gönderilemedi.');
   } finally {
     submitting.value = false;
   }
@@ -200,13 +200,13 @@ async function startVoiceInput() {
   voiceStatus.value = '';
 
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-    mediaError.value = 'Bu tarayici ses kaydi desteklemiyor.';
+    mediaError.value = 'Bu tarayıcı ses kaydı desteklemiyor.';
     return;
   }
 
   if (typeof window !== 'undefined' && !window.isSecureContext) {
     mediaError.value =
-      'Mikrofon izni icin bu sayfayi localhost veya HTTPS uzerinden acmalisin. Telefon/IP uzerinden duz HTTP acildiginda tarayici prompt gostermez.';
+      'Mikrofon izni için bu sayfayı localhost veya HTTPS üzerinden açmalısın. Telefon/IP üzerinden düz HTTP açıldığında tarayıcı izin penceresi göstermez.';
     return;
   }
 
@@ -238,7 +238,7 @@ async function startVoiceInput() {
     isRecording.value = true;
     startSpeechRecognition();
   } catch {
-    mediaError.value = 'Tarayici mikrofon kaydini baslatamadi. Baska bir ses kayit uygulamasi cihazı kullaniyor olabilir.';
+    mediaError.value = 'Tarayıcı mikrofon kaydını başlatamadı. Başka bir ses kayıt uygulaması cihazı kullanıyor olabilir.';
     stopAudioStream();
   }
 }
@@ -256,7 +256,7 @@ function startSpeechRecognition() {
   const SpeechRecognition = getSpeechRecognitionConstructor();
 
   if (!SpeechRecognition) {
-    voiceStatus.value = 'Speech-to-text desteklenmiyor, ses kaydi yine de alinacak.';
+    voiceStatus.value = 'Speech-to-text desteklenmiyor, ses kaydı yine de alınacak.';
     return;
   }
 
@@ -296,7 +296,7 @@ function startSpeechRecognition() {
   recognition.onerror = (event) => {
     voiceStatus.value = event.error
       ? `Speech-to-text hatasi: ${event.error}`
-      : 'Speech-to-text tamamlanamadi, ses kaydi saklanacak.';
+      : 'Speech-to-text tamamlanamadı, ses kaydı saklanacak.';
   };
   recognition.onend = () => {
     liveTranscript.value = '';
@@ -306,7 +306,7 @@ function startSpeechRecognition() {
     recognition.start();
     voiceStatus.value = 'Dinleniyor. Ses notu da talebe eklenecek.';
   } catch {
-    voiceStatus.value = 'Speech-to-text baslatilamadi, ses kaydi yine de alinacak.';
+    voiceStatus.value = 'Speech-to-text başlatılamadı, ses kaydı yine de alınacak.';
   }
 }
 
@@ -349,7 +349,7 @@ function setAudioBlob(blob: Blob, mimeType: string) {
   revokeAudioUrl();
 
   if (blob.size > MAX_AUDIO_BYTES) {
-    mediaError.value = 'Ses kaydi 10 MB sinirini asamaz.';
+    mediaError.value = 'Ses kaydı 10 MB sınırını aşamaz.';
     audioFile.value = null;
     return;
   }
@@ -357,7 +357,7 @@ function setAudioBlob(blob: Blob, mimeType: string) {
   const extension = mimeType.includes('mp4') ? 'm4a' : 'webm';
   audioFile.value = new File([blob], `request-audio-${Date.now()}.${extension}`, { type: mimeType });
   audioUrl.value = URL.createObjectURL(blob);
-  voiceStatus.value = 'Ses kaydi hazir.';
+  voiceStatus.value = 'Ses kaydı hazır.';
 }
 
 function clearAudio() {
@@ -388,7 +388,7 @@ function handleImageChange(event: Event) {
   const files = Array.from(input.files ?? []);
 
   if (files.length > MAX_IMAGE_UPLOADS) {
-    mediaError.value = `En fazla ${MAX_IMAGE_UPLOADS} fotograf secebilirsin.`;
+    mediaError.value = `En fazla ${MAX_IMAGE_UPLOADS} fotoğraf seçebilirsin.`;
     input.value = '';
     return;
   }
@@ -397,13 +397,13 @@ function handleImageChange(event: Event) {
 
   for (const file of files) {
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      mediaError.value = 'Sadece jpeg, png veya webp yuklenebilir.';
+      mediaError.value = 'Sadece jpeg, png veya webp yüklenebilir.';
       input.value = '';
       return;
     }
 
     if (file.size > MAX_IMAGE_BYTES) {
-      mediaError.value = 'Her fotograf en fazla 5 MB olabilir.';
+      mediaError.value = 'Her fotoğraf en fazla 5 MB olabilir.';
       input.value = '';
       return;
     }
@@ -455,10 +455,10 @@ function getMicrophoneErrorMessage(error: unknown) {
 
   if (errorName === 'NotAllowedError' || errorName === 'SecurityError') {
     if (typeof window !== 'undefined' && !window.isSecureContext) {
-      return 'Bu adres guvenli degil. Mikrofon icin `http://localhost:3000` veya HTTPS kullanmalisin.';
+      return 'Bu adres güvenli değil. Mikrofon için `http://localhost:3000` veya HTTPS kullanmalısın.';
     }
 
-    return 'Tarayici mikrofon iznini engelledi. Adres cubugundaki kilit veya site ayarlarindan mikrofonu Allow yapip sayfayi yenile.';
+    return 'Tarayıcı mikrofon iznini engelledi. Adres çubuğundaki kilit veya site ayarlarından mikrofona izin verip sayfayı yenile.';
   }
 
   if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
@@ -469,7 +469,7 @@ function getMicrophoneErrorMessage(error: unknown) {
     return 'Mikrofon su anda baska bir uygulama tarafindan kullaniliyor olabilir.';
   }
 
-  return 'Mikrofon izni alinamadi. Tarayici izinlerini ve baglanti tipini kontrol et.';
+  return 'Mikrofon izni alınamadı. Tarayıcı izinlerini ve bağlantı tipini kontrol et.';
 }
 </script>
 
@@ -483,7 +483,7 @@ function getMicrophoneErrorMessage(error: unknown) {
         </div>
 
         <div>
-          <h1>Talep Olustur</h1>
+          <h1>Talep Oluştur</h1>
           <p>QR ile acilan mobil uyumlu web ekrani</p>
         </div>
       </header>
@@ -491,7 +491,7 @@ function getMicrophoneErrorMessage(error: unknown) {
       <button v-if="error" class="button" type="button" @click="refresh">Tekrar dene</button>
 
       <div v-if="pending" class="mobile-card mobile-state-card">
-        <p>QR bilgisi yukleniyor...</p>
+        <p>QR bilgisi yükleniyor...</p>
       </div>
 
       <div v-else-if="error" class="mobile-card error-panel mobile-state-card">
@@ -511,7 +511,7 @@ function getMicrophoneErrorMessage(error: unknown) {
 
           <section class="mobile-card request-context-card">
             <div class="section-heading">
-              <p class="eyebrow">Talep Ozeti</p>
+              <p class="eyebrow">Talep Özeti</p>
               <h2>{{ selectedCategory.label }}</h2>
             </div>
 
@@ -525,8 +525,8 @@ function getMicrophoneErrorMessage(error: unknown) {
                 <strong>{{ selectedCategory.helper }}</strong>
               </article>
               <article>
-                <span>Fotograf</span>
-                <strong>{{ selectedImages.length }} adet secildi</strong>
+                <span>Fotoğraf</span>
+                <strong>{{ selectedImages.length }} adet seçildi</strong>
               </article>
               <article>
                 <span>Ses notu</span>
@@ -537,24 +537,24 @@ function getMicrophoneErrorMessage(error: unknown) {
             <div class="request-help-card">
               <strong>Mikrofon notu</strong>
               <p v-if="isSecureContextRef">
-                Desktopta `localhost` veya canli HTTPS adresinde tarayici izin penceresi acilmalidir.
+                Masaüstünde `localhost` veya canlı HTTPS adresinde tarayıcı izin penceresi açılmalıdır.
               </p>
               <p v-else>
-                Bu sayfa guvenli baglamda acilmadi. Mikrofon sadece `localhost` veya HTTPS adresinde calisir.
+                Bu sayfa güvenli bağlamda açılmadı. Mikrofon sadece `localhost` veya HTTPS adresinde çalışır.
               </p>
             </div>
           </section>
 
           <section class="mobile-info-banner">
             <strong>Bilgi</strong>
-            <p>Bu talep ilgili ekibe yonlendirilir. Gerekirse yonetici onayi surece dahil olur.</p>
+            <p>Bu talep ilgili ekibe yönlendirilir. Gerekirse yönetici onayı sürece dahil olur.</p>
           </section>
         </aside>
 
         <div class="request-main-stack">
           <section class="mobile-card request-builder-card">
             <div class="request-builder-section">
-              <p class="request-section-label">Talep Turu</p>
+              <p class="request-section-label">Talep Türü</p>
               <div class="request-category-grid">
                 <button
                   v-for="category in REQUEST_CATEGORIES"
@@ -571,24 +571,24 @@ function getMicrophoneErrorMessage(error: unknown) {
             </div>
 
             <div class="request-builder-section">
-              <label for="requestTitle">Talep Basligi</label>
+              <label for="requestTitle">Talep Başlığı</label>
               <input
                 id="requestTitle"
                 v-model="requestTitle"
                 type="text"
                 maxlength="120"
-                placeholder="Oda icin kisa talep basligi"
+                placeholder="Oda için kısa talep başlığı"
                 :disabled="submitting"
               />
             </div>
 
             <div class="request-builder-section">
-              <label for="requestDescription">Talep Aciklamasi</label>
+              <label for="requestDescription">Talep Açıklaması</label>
               <textarea
                 id="requestDescription"
                 v-model="requestDescription"
                 rows="5"
-                placeholder="Talebi detayli acikla"
+                placeholder="Talebi detaylı açıkla"
                 :disabled="submitting"
               />
             </div>
@@ -601,11 +601,11 @@ function getMicrophoneErrorMessage(error: unknown) {
                   :disabled="submitting"
                   @click="isRecording ? stopVoiceInput() : startVoiceInput()"
                 >
-                  {{ isRecording ? 'Kaydi Durdur' : 'Sesle Gir' }}
+                  {{ isRecording ? 'Kaydı Durdur' : 'Sesle Gir' }}
                 </button>
 
                 <button class="request-soft-action" type="button" :disabled="submitting" @click="openImagePicker">
-                  Fotograf Ekle
+                  Fotoğraf Ekle
                 </button>
               </div>
 
@@ -627,13 +627,13 @@ function getMicrophoneErrorMessage(error: unknown) {
                 v-model="transcriptText"
                 rows="3"
                 class="request-transcript"
-                placeholder="Ses kaydinin transcripti burada tutulur"
+                placeholder="Ses kaydının transkripti burada tutulur"
                 :disabled="submitting"
               />
 
               <div v-if="audioUrl" class="request-audio-preview">
                 <audio class="audio-player" :src="audioUrl" controls />
-                <button class="button small" type="button" @click="clearAudio">Ses kaydini sil</button>
+                <button class="button small" type="button" @click="clearAudio">Ses kaydını sil</button>
               </div>
 
               <div v-if="imagePreviews.length" class="request-photo-grid">
@@ -651,13 +651,13 @@ function getMicrophoneErrorMessage(error: unknown) {
 
           <section class="mobile-card request-submit-card">
             <button class="request-submit-button" type="submit" :disabled="submitting || !canSubmit">
-              {{ submitting ? 'Talep iletiliyor...' : 'Talebi Gonder' }}
+              {{ submitting ? 'Talep iletiliyor...' : 'Talebi Gönder' }}
             </button>
 
             <p v-if="mediaError" class="error-text">{{ mediaError }}</p>
             <p v-if="submitError" class="error-text">{{ submitError }}</p>
             <p v-if="successMessage" class="success-text">{{ successMessage }}</p>
-            <p class="request-footnote">Misafir kullanicisi olarak islem yapiyorsunuz.</p>
+            <p class="request-footnote">Misafir kullanıcısı olarak işlem yapıyorsunuz.</p>
           </section>
         </div>
       </form>

@@ -99,20 +99,20 @@ const summaryCards = computed(() => [
   {
     label: 'Aktif kurum',
     value: organizations.value.filter((organization) => organization.isActive).length,
-    detail: 'Operasyona acik',
+    detail: 'Operasyona açık',
     tone: 'green'
   },
   {
-    label: 'Kullanici',
+    label: 'Kullanıcı',
     value: organizations.value.reduce((total, organization) => total + organization._count.users, 0),
-    detail: 'Kurumlara bagli hesaplar',
+    detail: 'Kurumlara bağlı hesaplar',
     tone: 'violet'
   },
   {
     label: 'Telegram aktif',
     value: organizations.value.filter((organization) => organization.telegramEnabled && organization.telegramChatId)
       .length,
-    detail: 'Bildirim kanali bagli',
+    detail: 'Bildirim kanalı bağlı',
     tone: 'amber'
   }
 ]);
@@ -205,12 +205,12 @@ async function submit() {
     resetForm();
     isCreateModalOpen.value = false;
     editingOrganization.value = null;
-    pageMessage.value = wasEditMode ? 'Kurum guncellendi.' : 'Kurum olusturuldu.';
+    pageMessage.value = wasEditMode ? 'Kurum güncellendi.' : 'Kurum oluşturuldu.';
     await refresh();
   } catch (requestError) {
     formError.value = getApiErrorMessage(
       requestError,
-      isEditMode.value ? 'Kurum guncellenemedi.' : 'Kurum olusturulamadi.'
+      isEditMode.value ? 'Kurum güncellenemedi.' : 'Kurum oluşturulamadı.'
     );
   } finally {
     submitting.value = false;
@@ -269,8 +269,8 @@ function getTypeInitial(type: OrganizationType) {
     <header class="users-azure-header organizations-azure-header">
       <div class="users-title-block">
         <p class="eyebrow">Azure Directory</p>
-        <h1>Organizasyon Yonetimi</h1>
-        <p>Kurum portfoyu, bildirim kanallari ve operasyon baglantilari.</p>
+        <h1>Organizasyon Yönetimi</h1>
+        <p>Kurum portföyü, bildirim kanalları ve operasyon bağlantıları.</p>
       </div>
 
       <div class="users-header-actions">
@@ -308,7 +308,7 @@ function getTypeInitial(type: OrganizationType) {
           <label class="users-filter-card compact">
             <span>Tur</span>
             <select v-model="typeFilter">
-              <option value="ALL">Tum turler</option>
+              <option value="ALL">Tüm türler</option>
               <option v-for="type in typeOptions" :key="type" :value="type">{{ getTypeLabel(type) }}</option>
             </select>
           </label>
@@ -316,7 +316,7 @@ function getTypeInitial(type: OrganizationType) {
           <label class="users-filter-card compact">
             <span>Durum</span>
             <select v-model="statusFilter">
-              <option value="ALL">Tum durumlar</option>
+              <option value="ALL">Tüm durumlar</option>
               <option value="ACTIVE">Aktif</option>
               <option value="PASSIVE">Pasif</option>
             </select>
@@ -325,9 +325,9 @@ function getTypeInitial(type: OrganizationType) {
           <label class="users-filter-card compact">
             <span>Telegram</span>
             <select v-model="telegramFilter">
-              <option value="ALL">Tum kanallar</option>
+              <option value="ALL">Tüm kanallar</option>
               <option value="ACTIVE">Aktif</option>
-              <option value="PASSIVE">Kapali</option>
+              <option value="PASSIVE">Kapalı</option>
             </select>
           </label>
         </div>
@@ -338,15 +338,15 @@ function getTypeInitial(type: OrganizationType) {
           <p class="eyebrow">Kurumlar</p>
           <h2>Kurum listesi</h2>
         </div>
-        <span class="users-count-pill">{{ filteredOrganizations.length }} kayit</span>
+        <span class="users-count-pill">{{ filteredOrganizations.length }} kayıt</span>
       </div>
 
       <div v-if="pending" class="users-empty-state">
-        <p>Kurumlar yukleniyor...</p>
+        <p>Kurumlar yükleniyor...</p>
       </div>
 
       <div v-else-if="error" class="users-empty-state error-panel">
-        <p>Kurumlar alinamadi.</p>
+        <p>Kurumlar alınamadı.</p>
       </div>
 
       <div v-else class="users-table-wrap">
@@ -357,9 +357,9 @@ function getTypeInitial(type: OrganizationType) {
               <th>Tur</th>
               <th>Durum</th>
               <th>Telegram</th>
-              <th>Kullanici</th>
+              <th>Kullanıcı</th>
               <th>Lokasyon</th>
-              <th>Olusturulma</th>
+              <th>Oluşturulma</th>
               <th>Aksiyon</th>
             </tr>
           </thead>
@@ -399,7 +399,7 @@ function getTypeInitial(type: OrganizationType) {
                   }"
                 >
                   <span aria-hidden="true"></span>
-                  {{ organization.telegramEnabled && organization.telegramChatId ? 'Aktif' : 'Kapali' }}
+                  {{ organization.telegramEnabled && organization.telegramChatId ? 'Aktif' : 'Kapalı' }}
                 </span>
               </td>
               <td>{{ organization._count.users }}</td>
@@ -411,13 +411,13 @@ function getTypeInitial(type: OrganizationType) {
                     class="button small organizations-action-button action-users"
                     :to="`/admin/users?organizationId=${organization.id}`"
                   >
-                    Kullanicilar
+                    Kullanıcılar
                   </NuxtLink>
                   <NuxtLink
                     class="button small organizations-action-button action-tasks"
                     :to="`/admin/tasks?organizationId=${organization.id}`"
                   >
-                    Tasklar
+                    Görevler
                   </NuxtLink>
                   <NuxtLink
                     class="button small organizations-action-button action-qr"
@@ -436,14 +436,14 @@ function getTypeInitial(type: OrganizationType) {
                     type="button"
                     @click="openEditModal(organization)"
                   >
-                    Duzenle
+                    Düzenle
                   </button>
                 </div>
               </td>
             </tr>
 
             <tr v-if="filteredOrganizations.length === 0">
-              <td colspan="8">Secili filtrelerde kurum yok.</td>
+              <td colspan="8">Seçili filtrelerde kurum yok.</td>
             </tr>
           </tbody>
         </table>
@@ -455,16 +455,16 @@ function getTypeInitial(type: OrganizationType) {
         <div>
           <p class="eyebrow">Telegram</p>
           <h2>Kurum bildirim ayarlari</h2>
-          <p>Yeni QR talepleri icin kurum bazli Telegram grup chat ID ve topic ID degerlerini yonet.</p>
+          <p>Yeni QR talepleri için kurum bazlı Telegram grup chat ID ve topic ID değerlerini yönet.</p>
         </div>
       </div>
 
       <div v-if="pending" class="users-empty-state">
-        <p>Telegram ayarlari yukleniyor...</p>
+        <p>Telegram ayarları yükleniyor...</p>
       </div>
 
       <div v-else-if="error" class="users-empty-state error-panel">
-        <p>Telegram ayarlari alinamadi.</p>
+        <p>Telegram ayarları alınamadı.</p>
       </div>
 
       <div v-else class="organizations-telegram-grid">
@@ -486,7 +486,7 @@ function getTypeInitial(type: OrganizationType) {
               }"
             >
               <span aria-hidden="true"></span>
-              {{ organization.telegramEnabled && organization.telegramChatId ? 'Telegram aktif' : 'Kapali' }}
+              {{ organization.telegramEnabled && organization.telegramChatId ? 'Telegram aktif' : 'Kapalı' }}
             </span>
           </div>
 
@@ -497,7 +497,7 @@ function getTypeInitial(type: OrganizationType) {
           >
             <label class="organizations-toggle-row">
               <input v-model="telegramForms[organization.id].telegramEnabled" type="checkbox" />
-              <span>Telegram bildirimi gonder</span>
+              <span>Telegram bildirimi gönder</span>
             </label>
 
             <div class="organizations-telegram-fields">
@@ -542,7 +542,7 @@ function getTypeInitial(type: OrganizationType) {
         </article>
 
         <article v-if="organizations.length === 0" class="users-empty-state">
-          <p>Telegram ayari icin once kurum olustur.</p>
+          <p>Telegram ayarı için önce kurum oluştur.</p>
         </article>
       </div>
     </section>
@@ -551,8 +551,8 @@ function getTypeInitial(type: OrganizationType) {
       <section class="users-create-modal" role="dialog" aria-modal="true" aria-labelledby="createOrganizationTitle">
         <header class="users-modal-header">
           <div>
-            <p class="eyebrow">{{ isEditMode ? 'Kurum duzenle' : 'Yeni kurum' }}</p>
-            <h2 id="createOrganizationTitle">{{ isEditMode ? 'Kurum guncelle' : 'Kurum olustur' }}</h2>
+            <p class="eyebrow">{{ isEditMode ? 'Kurum düzenle' : 'Yeni kurum' }}</p>
+            <h2 id="createOrganizationTitle">{{ isEditMode ? 'Kurum güncelle' : 'Kurum oluştur' }}</h2>
           </div>
           <button class="users-modal-close" type="button" aria-label="Kapat" @click="closeCreateModal"></button>
         </header>
@@ -605,7 +605,7 @@ function getTypeInitial(type: OrganizationType) {
           <div class="users-modal-actions">
             <button class="button small" type="button" :disabled="submitting" @click="closeCreateModal">Vazgec</button>
             <button class="button primary" type="submit" :disabled="submitting">
-              {{ submitting ? 'Kaydediliyor...' : isEditMode ? 'Guncelle' : 'Olustur' }}
+              {{ submitting ? 'Kaydediliyor...' : isEditMode ? 'Güncelle' : 'Oluştur' }}
             </button>
           </div>
         </form>

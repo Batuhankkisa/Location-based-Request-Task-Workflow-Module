@@ -120,11 +120,11 @@ async function setActiveState(action: 'activate' | 'deactivate') {
       method: 'PATCH'
     });
 
-    actionMessage.value = action === 'activate' ? 'QR aktif edildi.' : 'QR pasife alindi.';
+    actionMessage.value = action === 'activate' ? 'QR aktif edildi.' : 'QR pasife alındı.';
     await refreshQr();
     await refreshLogs();
   } catch (error) {
-    actionError.value = getApiErrorMessage(error, 'QR durumu guncellenemedi.');
+    actionError.value = getApiErrorMessage(error, 'QR durumu güncellenemedi.');
   } finally {
     actionLoading.value = '';
   }
@@ -149,14 +149,14 @@ function assetUrl(value?: string | null) {
   <section class="section">
     <div class="page-heading">
       <div>
-        <p class="eyebrow">QR detayi</p>
+        <p class="eyebrow">QR detayı</p>
         <h1>{{ qr?.label ?? 'QR' }}</h1>
       </div>
       <NuxtLink class="button" to="/admin/qrs">QR listesine don</NuxtLink>
     </div>
 
     <div v-if="qrPending" class="panel">
-      <p>QR detayi yukleniyor...</p>
+      <p>QR detayı yükleniyor...</p>
     </div>
 
     <div v-else-if="qrError" class="panel error-panel">
@@ -192,11 +192,11 @@ function assetUrl(value?: string | null) {
             <dd>{{ formatDate(qr.lastScannedAt) }}</dd>
           </div>
           <div>
-            <dt>Olusturuldu</dt>
+            <dt>Oluşturuldu</dt>
             <dd>{{ formatDate(qr.createdAt) }}</dd>
           </div>
           <div>
-            <dt>Guncellendi</dt>
+            <dt>Güncellendi</dt>
             <dd>{{ formatDate(qr.updatedAt) }}</dd>
           </div>
           <div>
@@ -234,7 +234,7 @@ function assetUrl(value?: string | null) {
 
       <section class="panel">
         <p class="eyebrow">Gorsel</p>
-        <h2>QR onizleme</h2>
+        <h2>QR önizleme</h2>
         <p>
           <a :href="publicQrUrl" target="_blank" rel="noreferrer">{{ publicQrUrl }}</a>
         </p>
@@ -245,13 +245,13 @@ function assetUrl(value?: string | null) {
           <img
             v-if="qrPreviewImageUrl"
             :src="qrPreviewImageUrl"
-            alt="QR gorsel onizleme"
+            alt="QR görsel önizleme"
             @error="imageFailed = true"
           />
-          <p v-else class="muted">QR onizlemesi hazirlaniyor.</p>
+          <p v-else class="muted">QR önizlemesi hazirlaniyor.</p>
         </div>
         <p v-if="imageFailed && qr.imagePath" class="muted">
-          Kayitli gorsel bulunamadi; public URL icin otomatik QR gosteriliyor.
+          Kayıtlı görsel bulunamadı; public URL için otomatik QR gösteriliyor.
         </p>
       </section>
 
@@ -259,16 +259,16 @@ function assetUrl(value?: string | null) {
         <div class="page-heading">
           <div>
             <p class="eyebrow">Scan log</p>
-            <h2>Okutulma gecmisi</h2>
+            <h2>Okutulma geçmişi</h2>
           </div>
           <button class="button" type="button" @click="refreshLogs">Loglari yenile</button>
         </div>
 
         <div v-if="logsPending">
-          <p>Loglar yukleniyor...</p>
+          <p>Loglar yükleniyor...</p>
         </div>
         <div v-else-if="logsError" class="error-panel panel">
-          <p>Loglar alinamadi.</p>
+          <p>Loglar alınamadı.</p>
         </div>
         <div v-else class="table-wrap">
           <table>

@@ -29,7 +29,7 @@ async function submit() {
 
     await navigateTo(typeof route.query.redirect === 'string' ? route.query.redirect : '/admin/tasks');
   } catch (error) {
-    formError.value = getApiErrorMessage(error, 'Login basarisiz.');
+    formError.value = getApiErrorMessage(error, 'Giriş başarısız.');
   } finally {
     submitting.value = false;
   }
@@ -37,7 +37,7 @@ async function submit() {
 
 function showPasswordHelp() {
   formError.value = '';
-  helpMessage.value = 'Sifre yenileme icin sistem yoneticisinden kullanici kartindan yeni sifre belirlemesini iste.';
+  helpMessage.value = 'Şifre yenileme için sistem yöneticisinden kullanıcı kartından yeni şifre belirlemesini iste.';
 }
 </script>
 
@@ -46,7 +46,7 @@ function showPasswordHelp() {
     <div class="login-brand">
       <img class="login-brand-logo" src="/qr-logo.svg" alt="QR Talep logosu" />
       <h1>QR Talep</h1>
-      <p>Talep ve Gorev Yonetimi</p>
+      <p>Talep ve Görev Yönetimi</p>
     </div>
 
     <div class="panel auth-card">
@@ -56,12 +56,12 @@ function showPasswordHelp() {
 
       <form class="section" @submit.prevent="submit">
         <div>
-          <label for="email">E-POSTA ADRESI</label>
+          <label for="email">E-POSTA ADRESİ</label>
           <input id="email" v-model="email" type="email" autocomplete="username" required />
         </div>
 
         <div>
-          <label for="password">ŞIFRE</label>
+          <label for="password">ŞİFRE</label>
           <input id="password" v-model="password" type="password" autocomplete="current-password" required />
         </div>
 
@@ -75,7 +75,7 @@ function showPasswordHelp() {
 
         <div class="form-actions">
           <button class="button primary" type="submit" :disabled="submitting">
-            {{ submitting ? 'Giris yapiliyor...' : 'Giris yap' }}
+            {{ submitting ? 'Giriş yapılıyor...' : 'Giriş yap' }}
           </button>
         </div>
 
@@ -84,6 +84,6 @@ function showPasswordHelp() {
       </form>
     </div>
 
-    <p class="login-footer">© 2026 Nexus Enterprise. Tüm hakları saklıdır.</p>
+    <p class="login-footer">© 2026 QR Talep. Tüm hakları saklıdır.</p>
   </section>
 </template>
